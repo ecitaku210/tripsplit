@@ -11,10 +11,32 @@ updates:
     # One PR for all minor and patch bumps, so a quiet week is one review, not
     # ten. Majors still arrive one at a time, because they can break things.
     groups:
+      # react and react-dom must move together: react-dom declares a peer
+      # dependency on the same major of react, so a PR that bumps one without
+      # the other cannot even install (seen with the split 18 -> 19 PRs).
+      # Grouped, they always arrive as one PR, whatever the update type.
+      react:
+        patterns:
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
       minor-and-patch:
         update-types:
           - minor
           - patch
+    # React 19 works (tested: build, 170 tests, browser walk-through) but adds
+    # 22 kB gzipped to the app bundle for nothing this app needs. Stay on 18
+    # until something requires 19; delete this block to get the upgrade PR.
+    ignore:
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
