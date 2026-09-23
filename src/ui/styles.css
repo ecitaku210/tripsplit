@@ -9,13 +9,21 @@
  * interface ships inside the precached bundle.
  */
 
+/*
+ * True black. On an OLED screen #000 switches those pixels off entirely:
+ * deeper contrast, less battery, and no grey glow around the edges. The cost
+ * is that surfaces sitting on pure black need a touch more lift and a
+ * slightly stronger edge than they did on navy, or cards melt into the
+ * background. The surface tones below keep a hint of navy so the app still
+ * reads as one design rather than grey boxes on black.
+ */
 :root {
-  --bg: #0a0f1c;
-  --surface: #111a2c;
-  --surface-2: #182338;
-  --surface-3: #1f2c45;
-  --line: rgba(148, 163, 184, 0.14);
-  --line-strong: rgba(148, 163, 184, 0.26);
+  --bg: #000000;
+  --surface: #0d1422;
+  --surface-2: #151e30;
+  --surface-3: #1c2739;
+  --line: rgba(148, 163, 184, 0.17);
+  --line-strong: rgba(148, 163, 184, 0.3);
   --text: #eef3fb;
   --text-dim: #9fb0c6;
   --text-faint: #6b7d95;
@@ -89,7 +97,7 @@ body {
   inset: 0 0 auto;
   height: 320px;
   pointer-events: none;
-  background: radial-gradient(70% 60% at 50% -10%, rgba(45, 212, 191, 0.18), transparent 70%);
+  background: radial-gradient(70% 60% at 50% -10%, rgba(45, 212, 191, 0.14), transparent 70%);
 }
 
 .topbar {
@@ -101,7 +109,7 @@ body {
   gap: 6px;
   min-height: 56px;
   padding: calc(var(--safe-top) + 8px) 10px 8px;
-  background: rgba(10, 15, 28, 0.82);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
@@ -398,7 +406,7 @@ body {
   padding: 18px 18px 16px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
-  background: linear-gradient(160deg, #162239 0%, #101a2d 60%, #0f1729 100%);
+  background: linear-gradient(160deg, #132038 0%, #0d1526 60%, #0a1120 100%);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -436,7 +444,7 @@ body {
   margin: 10px 0 0;
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  background: rgba(10, 15, 28, 0.45);
+  background: rgba(0, 0, 0, 0.45);
   font-size: 13px;
   color: var(--text-dim);
 }
@@ -507,7 +515,7 @@ body {
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: rgba(10, 15, 28, 0.5);
+  background: rgba(0, 0, 0, 0.5);
   font-size: 12px;
   font-weight: 550;
   color: var(--text-dim);
@@ -701,6 +709,10 @@ body {
 .tile:active {
   transform: scale(0.98);
   border-color: var(--line-strong);
+}
+
+.tile.wide {
+  width: 100%;
 }
 
 .tile .ic {
@@ -1034,6 +1046,25 @@ details.howto .body p {
 
 details.howto .body strong {
   color: var(--text);
+}
+
+/* ---------- help & FAQ ---------- */
+
+.faq details.howto + details.howto {
+  margin-top: 8px;
+}
+
+.faq details.howto summary {
+  color: var(--text);
+}
+
+.faq .body ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+
+.faq .body li + li {
+  margin-top: 6px;
 }
 
 /* ---------- misc ---------- */

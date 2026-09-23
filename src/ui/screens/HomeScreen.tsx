@@ -22,6 +22,15 @@ export function HomeScreen() {
         brand
         title="TripSplit"
         subtitle={trips.length ? countOf(trips.length, 'trip', 'trips') : 'Split trip costs, fairly'}
+        right={
+          <button
+            className="btn ghost icon-only"
+            onClick={() => navigate('/help')}
+            aria-label="Help and FAQ"
+          >
+            <Icon name="info" size={20} />
+          </button>
+        }
       />
       <div className="content no-fab">
         {saveError && (
@@ -83,9 +92,19 @@ export function HomeScreen() {
         )}
 
         <div className="section">
+          <button className="tile wide" onClick={() => navigate('/help')}>
+            <span className="ic">
+              <Icon name="info" size={18} />
+            </span>
+            <span className="t-title">Help &amp; FAQ</span>
+            <span className="t-sub">
+              How to install on iPhone or Android, join a trip, split a bill and settle up.
+            </span>
+          </button>
+          <div className="spacer" />
           <details className="howto">
             <summary>
-              <Icon name="info" size={18} />
+              <Icon name="wifi" size={18} />
               How syncing and privacy work
               <Icon name="chevron" size={18} className="chev" />
             </summary>

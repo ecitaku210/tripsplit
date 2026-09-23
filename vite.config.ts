@@ -19,8 +19,8 @@ export default defineConfig({
         short_name: 'TripSplit',
         description:
           'Split trip expenses with friends. Works fully offline, no account needed.',
-        theme_color: '#0f766e',
-        background_color: '#0b1120',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait',
         start_url: base,
