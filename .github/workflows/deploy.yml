@@ -63,12 +63,39 @@ jobs:
         with:
           path: dist
 
+  emulator:
+    # The Firebase config ships inside the public bundle, so firestore.rules
+    # is the only thing protecting the database. This job runs the rules
+    # suite and the two-phone sync tests against Google's real Firestore
+    # emulator on every push and pull request, so a rules change that opens
+    # the database to the internet fails CI instead of reaching production.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # The Firestore emulator is a Java program.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Security rules and live-sync tests
+        run: npm run test:emulator
+
   deploy:
     # A pull request must never publish to the live site — it would put
     # unreviewed code on the URL the whole group has installed. PRs stop after
     # the build job, which is the part that actually verifies anything.
     if: github.event_name != 'pull_request'
-    needs: build
+    # Never publish a build whose rules or sync tests failed.
+    needs: [build, emulator]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

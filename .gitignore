@@ -11,3 +11,10 @@ tsconfig.tsbuildinfo
 e2e-tmp.mjs
 pwa-tmp.mjs
 measure-tmp.mjs
+
+# Firebase emulator output
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+.firebase/
+dist-e2e/

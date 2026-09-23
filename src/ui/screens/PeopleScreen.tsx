@@ -187,7 +187,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
             onClick={() => {
               if (
                 confirm(
-                  `Delete "${trip.name}" from this phone?\n\nThis cannot be undone here. Anyone you have already shared it with keeps their copy, and re-importing from them brings it back.`,
+                  `Delete "${trip.name}" from this phone?\n\nIt is removed from this phone only and stops syncing here. Everyone else on the trip keeps it.`,
                 )
               ) {
                 deleteTrip(trip.id)

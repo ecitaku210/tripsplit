@@ -46,15 +46,15 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                 </div>
               ))}
               <div className="spacer" />
-              Share the trip so everyone else sees these too.
+              Everyone else sees these as soon as this phone has signal.
             </div>
           </div>
         )}
 
         {plan.length === 0 ? (
           <Empty title="Nothing to settle">
-            Everyone on this phone&apos;s copy is square. Sync with the group first to be sure
-            nothing is missing.
+            Everyone is square. If anyone has been offline, check again once they reconnect so
+            their latest expenses are included.
           </Empty>
         ) : (
           <>
@@ -111,8 +111,8 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                 ))}
               </div>
               <p className="hint">
-                Recording a payment only changes <em>this</em> phone. Share the trip afterwards so
-                everyone else sees it too.
+                Only tap Record once the money has actually changed hands. It reaches everyone
+                else&apos;s phone as soon as this one has signal.
               </p>
             </div>
           </>

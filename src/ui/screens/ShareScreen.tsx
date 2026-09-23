@@ -111,8 +111,9 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
       <div className="content no-fab">
         <div className="section">
           <div className="notice">
-            <strong>Send this to everyone, every evening.</strong> Sending the same update twice is
-            harmless — duplicates are impossible because each expense carries its own permanent id.
+            <strong>Everyday changes sync by themselves.</strong> Use this screen to invite someone
+            to the trip, or to swap updates by hand when there is no signal. Sending the same update
+            twice is harmless — each expense carries its own permanent id.
           </div>
         </div>
 

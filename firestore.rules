@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// TripSplit security rules.
+//
+// The Firebase config inside the app is public by design: anyone can read it
+// out of the JavaScript bundle. These rules are therefore the only thing that
+// stands between the database and the internet. Everything not granted below
+// is denied.
+//
+// The model is "knowing the trip id is membership". A trip id is a random
+// UUID (122 bits), shared only through the in-app share code, so it cannot be
+// guessed and - because listing is denied - cannot be discovered.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Matches what the app mints: a UUID, or 32 hex characters as fallback.
+    function validTripId(id) {
+      return id.matches('^[A-Za-z0-9_-]{8,64}$');
+    }
+
+    // The document holds one opaque, compressed ledger. The server cannot
+    // understand it and does not need to: merging happens on the phones.
+    function validDoc() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['ledger', 'updatedAt', 'updatedBy'])
+        && d.keys().hasAll(['ledger', 'updatedAt', 'updatedBy'])
+        && d.ledger is string
+        && d.ledger.size() > 0
+        && d.ledger.size() <= 700000
+        // Server clock only: a client cannot backdate or future-date a write.
+        && d.updatedAt == request.time
+        // Every write is attributable to the phone that made it.
+        && d.updatedBy == request.auth.uid;
+    }
+
+    match /trips/{tripId} {
+      // Read one trip by id. Deliberately NOT `read`, which would also grant
+      // `list` and let anyone enumerate every trip in the database.
+      allow get: if signedIn() && validTripId(tripId);
+
+      allow create, update: if signedIn() && validTripId(tripId) && validDoc();
+
+      // No delete. Deleting inside the app writes a tombstone into the ledger,
+      // so a real delete is never needed - and refusing it means no client,
+      // buggy or hostile, can wipe a trip for everyone.
+    }
+  }
+}
