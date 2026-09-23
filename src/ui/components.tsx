@@ -88,6 +88,19 @@ export function UnknownAvatar({ small }: { small?: boolean }) {
   )
 }
 
+/**
+ * Two avatars, payer over payee, for a repayment: "Asha → Chirag" as a
+ * picture, so a list of repayments reads without parsing names.
+ */
+export function AvatarPair({ from, to }: { from: Member | undefined; to: Member | undefined }) {
+  return (
+    <div className="avatar-pair" aria-hidden="true">
+      {from ? <Avatar member={from} small /> : <UnknownAvatar small />}
+      {to ? <Avatar member={to} small /> : <UnknownAvatar small />}
+    </div>
+  )
+}
+
 /** Overlapping small avatars: "who is on this trip" at a glance. */
 export function AvatarStack({ members, max = 4 }: { members: Member[]; max?: number }) {
   const shown = members.slice(0, max)

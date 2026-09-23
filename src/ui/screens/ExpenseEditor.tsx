@@ -4,11 +4,12 @@ import { liveMembers } from '../../domain/balance'
 import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { formatMinor, parseAmount } from '../../domain/money'
 import { isIsoDate } from '../../domain/ledger'
-import { Avatar, Field, Money, NotFound, Segmented, TopBar } from '../components'
+import { Avatar, Field, Money, NotFound, Segmented, TopBar, firstName } from '../components'
 import { Icon } from '../icons'
-import { back } from '../router'
+import { back, leave } from '../router'
 import { useToast } from '../toast'
 import { useSyncStatus } from '../../sync/SyncProvider'
+import { CATEGORIES } from '../categories'
 import type { Id, SplitMode } from '../../domain/types'
 
 const MODE_OPTIONS: { value: SplitMode; label: string }[] = [
@@ -143,6 +144,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                   : null
 
   const canSave = problem === null
+  /** Where this form was opened from, for back and cancel. */
+  const parent = existing ? `/trip/${tripId}/expense/${existing.id}` : `/trip/${tripId}`
 
   /**
    * A blank new form is not a mistake the user has made yet, so it should not
@@ -164,8 +167,9 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
       note: note.trim(),
     })
     // Back, not forward: the editor's job is done, so it must not stay in
-    // history for the phone's back button to return to.
-    back(`/trip/${tripId}`)
+    // history for the phone's back button to return to. An existing expense
+    // returns to its detail view, a new one to the trip.
+    back(parent)
     // Says where the data is, in one line. "Saved" alone leaves the person
     // wondering whether their friends have it yet.
     const reach =
@@ -187,11 +191,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
 
   return (
     <>
-      <TopBar
-        title={existing ? 'Edit expense' : 'Add expense'}
-        onBack
-        backTo={`/trip/${tripId}`}
-      />
+      <TopBar title={existing ? 'Edit expense' : 'Add expense'} onBack backTo={parent} />
       <div className="content no-fab">
         <Field label={`Amount (${trip.currency.code})`}>
           <div className="amount-wrap">
@@ -222,24 +222,64 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
               setTouched(true)
             }}
           />
+          {/*
+            One tap covers the common cases. A chip fills the description
+            when it is empty or still another chip's word; typed text is
+            never overwritten.
+          */}
+          <div className="chips" role="group" aria-label="Quick descriptions">
+            {CATEGORIES.map((c) => {
+              const on = description.trim().toLowerCase() === c.label.toLowerCase()
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`chip pick${on ? ' on' : ''}`}
+                  aria-pressed={on}
+                  onClick={() => {
+                    const current = description.trim().toLowerCase()
+                    const isChip = CATEGORIES.some((x) => x.label.toLowerCase() === current)
+                    if (current === '' || isChip) setDescription(c.label)
+                    else setDescription(`${c.label} · ${description.trim()}`)
+                    setTouched(true)
+                  }}
+                >
+                  <Icon name={c.icon} size={14} />
+                  {c.label}
+                </button>
+              )
+            })}
+          </div>
         </Field>
 
         <Field label="Who paid?">
-          <select
-            value={paidBy}
-            onChange={(e) => {
-              setPaidBy(e.target.value)
-              setTouched(true)
-            }}
-          >
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-                {m.id === db.identities[tripId] ? ' (you)' : ''}
-                {m.deletedAt !== null ? ' — no longer on the trip' : ''}
-              </option>
-            ))}
-          </select>
+          {/*
+            People as tappable faces, not a dropdown: the payer is the one
+            fact everyone at the table knows, and a face is faster to find
+            than a name in a list.
+          */}
+          <div className="people-pick" role="radiogroup" aria-label="Who paid?">
+            {members.map((m) => {
+              const on = paidBy === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className={`person${on ? ' on' : ''}${m.deletedAt !== null ? ' gone' : ''}`}
+                  onClick={() => {
+                    setPaidBy(m.id)
+                    setTouched(true)
+                  }}
+                >
+                  <Avatar member={m} />
+                  <span className="pname">{firstName(m.name)}</span>
+                  {m.id === db.identities[tripId] && <span className="chip tiny accent me">you</span>}
+                </button>
+              )
+            })}
+          </div>
         </Field>
 
         <Field label="Date">
@@ -308,6 +348,15 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
             })}
           </div>
 
+          {mode === 'equal' && split?.ok && parts.length > 1 && (
+            <p className="hint">
+              Each pays{' '}
+              <strong>
+                <Money amount={split.shares.get(parts[0]!.memberId) ?? 0} currency={trip.currency} />
+              </strong>
+              {parts.length > 2 ? ` between ${parts.length} people` : ''}.
+            </p>
+          )}
           {mode === 'percent' && (
             <p className="hint">
               Adds up to {(enteredTotal / 100).toFixed(2)}% of {PERCENT_TOTAL / 100}%.
@@ -357,7 +406,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
 
         <div className="spacer" />
         <div className="btn-row">
-          <button className="btn ghost" onClick={() => back(`/trip/${tripId}`)}>
+          <button className="btn ghost" onClick={() => back(parent)}>
             Cancel
           </button>
           <button className="btn primary" disabled={!canSave} onClick={save}>
@@ -377,7 +426,9 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                 // No "are you sure?": the toast carries Undo instead.
                 const id = existing.id
                 deleteExpense(tripId, id)
-                back(`/trip/${tripId}`)
+                // Two screens back: the detail view behind this editor is
+                // about the expense just deleted.
+                leave(`/trip/${tripId}`, 2)
                 toast(`Deleted ${existing.description || 'expense'}`, {
                   action: { label: 'Undo', onClick: () => restoreExpense(tripId, id) },
                 })

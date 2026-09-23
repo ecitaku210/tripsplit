@@ -7,6 +7,7 @@ import { Icon } from '../icons'
 import { navigate } from '../router'
 import type { Currency, Trip } from '../../domain/types'
 import { countOf } from '../plural'
+import { timeAgo } from '../dates'
 
 export function HomeScreen() {
   const { db, createTrip, usage, saveError } = useStore()
@@ -53,6 +54,8 @@ export function HomeScreen() {
         )}
 
         {trips.length === 0 && !creating && <FirstRun />}
+
+        {trips.length > 1 && <Standing trips={trips} identities={db.identities} />}
 
         {trips.length > 0 && (
           <div className="section">
@@ -168,9 +171,13 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
       </div>
       <div className="mid">
         <AvatarStack members={members} />
-        <span>
+        <span className="facts">
           {countOf(members.length, 'person', 'people')} ·{' '}
           {countOf(liveExpenses(trip).length, 'expense', 'expenses')}
+          <span className="when">
+            <Icon name="clock" size={12} />
+            {timeAgo(lastActivity(trip), Date.now())}
+          </span>
         </span>
       </div>
       <div className="bottom">
@@ -178,6 +185,59 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
         <span className="spent num">{formatMoney(totals.totalSpentMinor, trip.currency)} spent</span>
       </div>
     </button>
+  )
+}
+
+/** When anything on the trip last changed, on any phone. */
+function lastActivity(trip: Trip): number {
+  let at = trip.updatedAt
+  for (const e of Object.values(trip.expenses)) at = Math.max(at, e.updatedAt)
+  for (const s of Object.values(trip.settlements)) at = Math.max(at, s.updatedAt)
+  for (const m of Object.values(trip.members)) at = Math.max(at, m.updatedAt)
+  return at
+}
+
+/**
+ * Where the reader stands across every trip they have named themselves on,
+ * one currency at a time. The single most useful number on the home screen
+ * for someone on two or three trips at once.
+ */
+function Standing({ trips, identities }: { trips: Trip[]; identities: Record<string, string> }) {
+  const byCurrency = new Map<string, { currency: Currency; net: number; trips: number }>()
+  for (const trip of trips) {
+    const me = identities[trip.id]
+    if (!me) continue
+    const mine = computeTotals(trip).balances.find((b) => b.memberId === me)
+    if (!mine) continue
+    const entry = byCurrency.get(trip.currency.code) ?? { currency: trip.currency, net: 0, trips: 0 }
+    entry.net += mine.netMinor
+    entry.trips += 1
+    byCurrency.set(trip.currency.code, entry)
+  }
+  const rows = [...byCurrency.values()].filter((r) => r.trips > 1)
+  if (rows.length === 0) return null
+  return (
+    <div className="section">
+      <div className="standing">
+        {rows.map((r) => {
+          const v = verdict(r.net)
+          return (
+            <div key={r.currency.code} className="standing-row">
+              <span className="kicker">Across {countOf(r.trips, 'trip', 'trips')}</span>
+              <span className={`verdict ${v.tone}`}>
+                {v.label}
+                {r.net !== 0 && (
+                  <>
+                    {' '}
+                    <span className="num">{formatMoney(Math.abs(r.net), r.currency)}</span>
+                  </>
+                )}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

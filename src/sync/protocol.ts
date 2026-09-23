@@ -23,11 +23,23 @@ export type PushDecision =
   | { action: 'write'; blob: string; merged: Trip }
   | { action: 'skip'; reason: 'identical' }
   | { action: 'refuse'; reason: 'too-large'; chars: number }
-  | { action: 'refuse'; reason: 'newer-version' | 'unsendable' }
+  | { action: 'refuse'; reason: 'newer-version' | 'unsendable' | 'locked' }
 
 export type PullDecision =
   | { action: 'adopt'; merged: Trip }
-  | { action: 'ignore'; reason: 'identical' | 'unreadable' | 'wrong-trip' | 'newer-version' }
+  | {
+      action: 'ignore'
+      reason: 'identical' | 'unreadable' | 'wrong-trip' | 'newer-version' | 'locked'
+    }
+
+export interface PushOptions {
+  /**
+   * Write even when the content already matches: used once, to replace a
+   * plaintext server copy with the encrypted form after a key is turned on.
+   * Without it the identical-content skip would leave the plaintext there.
+   */
+  rewrite?: boolean
+}
 
 /**
  * Canonical fingerprint of a trip's full content.
@@ -67,7 +79,8 @@ export function readRemote(blob: string | null | undefined, tripId: Id): Trip | 
 
 /**
  * What the server holds, told apart by what may be done about it: nothing
- * there, a trip, data from a NEWER app version (never to be overwritten), or
+ * there, a trip, data from a NEWER app version (never to be overwritten),
+ * ciphertext this phone could not open (never to be overwritten either), or
  * garbage (safe to replace — a good copy heals it).
  */
 export function inspectRemote(
@@ -77,11 +90,14 @@ export function inspectRemote(
   | { kind: 'none' }
   | { kind: 'trip'; trip: Trip }
   | { kind: 'newer-version' }
+  | { kind: 'sealed' }
   | { kind: 'unreadable' } {
   if (typeof blob !== 'string' || blob === '') return { kind: 'none' }
   const decoded = decodeLedger(blob)
   if (!decoded.ok) {
-    return decoded.reason === 'newer-version' ? { kind: 'newer-version' } : { kind: 'unreadable' }
+    if (decoded.reason === 'newer-version') return { kind: 'newer-version' }
+    if (decoded.reason === 'sealed') return { kind: 'sealed' }
+    return { kind: 'unreadable' }
   }
   const trip = decoded.file.trips[tripId]
   return trip ? { kind: 'trip', trip } : { kind: 'unreadable' }
@@ -93,16 +109,25 @@ export function inspectRemote(
  * The remote copy is merged in first, so a write can never clobber an expense
  * that landed between this phone's last read and now.
  */
-export function decidePush(local: Trip, remoteBlob: string | null, deviceId: Id): PushDecision {
+export function decidePush(
+  local: Trip,
+  remoteBlob: string | null,
+  deviceId: Id,
+  opts: PushOptions = {},
+): PushDecision {
   const inspected = inspectRemote(remoteBlob, local.id)
   // An older app must never overwrite what it cannot read: that would erase
   // everything the newer version added, for the whole group.
   if (inspected.kind === 'newer-version') return { action: 'refuse', reason: 'newer-version' }
+  // Nor may a phone without the key overwrite the group's encrypted ledger
+  // with its own plaintext. The adapter decrypts before calling this; a
+  // still-sealed blob here means the key is missing or wrong.
+  if (inspected.kind === 'sealed') return { action: 'refuse', reason: 'locked' }
   const remote = inspected.kind === 'trip' ? inspected.trip : null
   const merged = remote ? mergeTrip(local, remote) : local
 
   // Fast path: the usual case after any adopt.
-  if (remote && fingerprint(merged) === fingerprint(remote)) {
+  if (!opts.rewrite && remote && fingerprint(merged) === fingerprint(remote)) {
     return { action: 'skip', reason: 'identical' }
   }
 
@@ -115,7 +140,7 @@ export function decidePush(local: Trip, remoteBlob: string | null, deviceId: Id)
   // impossible, whatever the cause of the mismatch.
   const sendable = normaliseTrip(merged)
   if (!sendable) return { action: 'refuse', reason: 'unsendable' }
-  if (remote && fingerprint(sendable) === fingerprint(remote)) {
+  if (!opts.rewrite && remote && fingerprint(sendable) === fingerprint(remote)) {
     return { action: 'skip', reason: 'identical' }
   }
 
@@ -130,6 +155,7 @@ export function decidePush(local: Trip, remoteBlob: string | null, deviceId: Id)
 export function decidePull(local: Trip, remoteBlob: string | null): PullDecision {
   const inspected = inspectRemote(remoteBlob, local.id)
   if (inspected.kind === 'newer-version') return { action: 'ignore', reason: 'newer-version' }
+  if (inspected.kind === 'sealed') return { action: 'ignore', reason: 'locked' }
   if (inspected.kind !== 'trip') return { action: 'ignore', reason: 'unreadable' }
   const remote = inspected.trip
   if (remote.id !== local.id) return { action: 'ignore', reason: 'wrong-trip' }

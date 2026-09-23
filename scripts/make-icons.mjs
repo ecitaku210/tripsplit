@@ -67,48 +67,71 @@ function png(size, pixel) {
 }
 
 const TEAL = [45, 212, 191]
-const TEAL_DEEP = [13, 148, 136]
-const NAVY = [11, 17, 32]
+const TEAL_DEEP = [20, 184, 166]
+const INK = [4, 33, 31]
+const INK_SOFT = [10, 60, 56]
 
 /**
- * The mark: a circle cut by a diagonal into two halves in different shades —
- * one bill, two ways. The two tones matter: a single-colour circle with a
- * slash through it reads as a "no entry" sign instead of a split.
+ * The mark: the wallet from the app's top bar, dark on the teal gradient the
+ * app uses for its primary button. On the home screen the app then looks
+ * like the app, not like a generic placeholder.
  *
- * Drawn analytically with a one-pixel soft edge, so it stays clean at 192px
- * without any anti-aliasing library.
+ * Drawn analytically with signed distances and a one-pixel soft edge, so it
+ * stays clean at every size without an image library. Coordinates are in
+ * units of the icon size.
  */
 function draw(size, { maskable }) {
   // A maskable icon may be cropped to a circle by the launcher, so its art
-  // must sit inside the inner 80% "safe zone".
-  const scale = maskable ? 0.62 : 0.78
-  const c = size / 2
-  const r = (size * scale) / 2
-  const gap = Math.max(size * 0.045, 2)
+  // must sit inside the inner 80% "safe zone"; other icons wear their own
+  // rounded corners on a transparent background.
+  const art = maskable ? 0.58 : 0.66
+  const corner = maskable ? 0 : 0.22
 
   return (x, y) => {
-    const dx = x + 0.5 - c
-    const dy = y + 0.5 - c
-    const dist = Math.hypot(dx, dy)
+    const u = (x + 0.5) / size - 0.5
+    const v = (y + 0.5) / size - 0.5
+    const px = 1 / size
 
-    // Distance to the diagonal split line (y = x), used to cut the gap.
-    const toLine = Math.abs(dx - dy) / Math.SQRT2
+    // Background plate: full bleed when maskable, a rounded square otherwise.
+    const plate = maskable ? 1 : cover(roundedBox(u, v, 0.5, 0.5, corner), px)
+    // Vertical teal gradient, bright at the top.
+    const g = clamp(v + 0.5)
+    const bg = mix(TEAL, TEAL_DEEP, g)
 
-    // Soft coverage: 1 inside, 0 outside, blended over one pixel.
-    const inCircle = clamp(r - dist + 0.5)
-    const inGap = clamp(gap / 2 - toLine + 0.5)
-    const coverage = inCircle * (1 - inGap)
+    // Wallet body: a rounded rectangle, centred.
+    const bw = art * 0.5
+    const bh = art * 0.36
+    const body = cover(roundedBox(u, v, bw, bh, art * 0.08), px)
+    // Flap: a lighter band across the top of the body, set in from the left
+    // like the fold of a bifold wallet.
+    const flapH = art * 0.11
+    const flap = cover(roundedBox(u - art * 0.04, v + bh - flapH, bw * 0.9, flapH, art * 0.05), px)
+    // Clasp: a teal dot on the right of the body, cut out of the ink.
+    const clasp = cover(Math.hypot(u - bw * 0.6, v + art * 0.04) - art * 0.06, px)
 
-    const [r0, g0, b0] = NAVY
-    // Above the y = x diagonal gets the bright half, below gets the deep one.
-    const [r1, g1, b1] = dx - dy > 0 ? TEAL : TEAL_DEEP
-    return [
-      Math.round(r0 + (r1 - r0) * coverage),
-      Math.round(g0 + (g1 - g0) * coverage),
-      Math.round(b0 + (b1 - b0) * coverage),
-      255,
-    ]
+    let c = bg
+    c = mix(c, INK, body)
+    c = mix(c, INK_SOFT, flap * body)
+    c = mix(c, bg, clasp * body)
+
+    return [Math.round(c[0]), Math.round(c[1]), Math.round(c[2]), Math.round(255 * plate)]
   }
+}
+
+/** Signed distance to a rounded box centred at the origin (negative inside). */
+function roundedBox(x, y, hw, hh, r) {
+  const qx = Math.abs(x) - hw + r
+  const qy = Math.abs(y) - hh + r
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r
+}
+
+/** Coverage from a signed distance: 1 inside, 0 outside, soft over one pixel. */
+function cover(d, px) {
+  return clamp(0.5 - d / px)
+}
+
+function mix(a, b, t) {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
 }
 
 function clamp(v) {
@@ -120,7 +143,9 @@ const files = [
   ['icon-192.png', 192, { maskable: false }],
   ['icon-512.png', 512, { maskable: false }],
   ['maskable-512.png', 512, { maskable: true }],
-  ['apple-touch-icon.png', 180, { maskable: false }],
+  // iOS rounds the corners itself and paints transparency black, so this
+  // one is full-bleed like the maskable icon.
+  ['apple-touch-icon.png', 180, { maskable: true }],
   ['favicon.png', 64, { maskable: false }],
 ]
 

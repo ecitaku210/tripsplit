@@ -21,23 +21,25 @@ import type { MergeSummary } from '../../domain/merge'
  */
 export function ShareScreen({ tripId }: { tripId: Id }) {
   const trip = useTrip(tripId)
-  const { db, importTrips } = useStore()
+  const { db, importTrips, encryptTrip } = useStore()
   const [copied, setCopied] = useState(false)
   const [pasted, setPasted] = useState('')
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [confirmEncrypt, setConfirmEncrypt] = useState(false)
 
-  const code = useMemo(() => {
-    if (!trip) return ''
-    return encodeLedger(buildLedgerFile({ [trip.id]: trip }, db.deviceId))
-  }, [trip, db.deviceId])
+  const key = db.keys[tripId]
+  // The shared file carries the key: the code IS the invitation, and the key
+  // is what makes the invitation able to read the trip.
+  const file = useMemo(
+    () => (trip ? buildLedgerFile({ [trip.id]: trip }, db.deviceId, key ? { [trip.id]: key } : undefined) : null),
+    [trip, db.deviceId, key],
+  )
+  const code = useMemo(() => (file ? encodeLedger(file) : ''), [file])
 
-  if (!trip) return <NotFound what="trip" />
+  if (!trip || !file) return <NotFound what="trip" />
 
   const fileName = `${slug(trip.name)}-${liveExpenses(trip).length}-expenses.tripsplit.json`
-  const blob = () =>
-    new Blob([JSON.stringify(buildLedgerFile({ [trip.id]: trip }, db.deviceId), null, 0)], {
-      type: 'application/json',
-    })
+  const blob = () => new Blob([JSON.stringify(file, null, 0)], { type: 'application/json' })
 
   async function shareFile() {
     const file = new File([blob()], fileName, { type: 'application/json' })
@@ -81,7 +83,10 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
       setResult({ ok: false, message: decoded.message })
       return
     }
-    const summary = importTrips(decoded.file.trips, { restoreDeleted: true })
+    const summary = importTrips(decoded.file.trips, {
+      restoreDeleted: true,
+      ...(decoded.file.keys ? { keys: decoded.file.keys } : {}),
+    })
     setResult({
       ok: true,
       message: describe(summary) + (decoded.warnings.length ? ` ${decoded.warnings.join(' ')}` : ''),
@@ -96,7 +101,10 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
         setResult({ ok: false, message: parsed.message })
         return
       }
-      const summary = importTrips(parsed.file.trips, { restoreDeleted: true })
+      const summary = importTrips(parsed.file.trips, {
+        restoreDeleted: true,
+        ...(parsed.file.keys ? { keys: parsed.file.keys } : {}),
+      })
       setResult({
         ok: true,
         message: describe(summary) + (parsed.warnings.length ? ` ${parsed.warnings.join(' ')}` : ''),
@@ -110,6 +118,53 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
     <>
       <TopBar title="Invite & share" subtitle={trip.name} onBack backTo={`/trip/${tripId}`} />
       <div className="content no-fab">
+        <div className="section">
+          {key ? (
+            <Alert tone="good">
+              <strong>End-to-end encrypted.</strong> Only phones with this trip&apos;s code can read
+              it; Firebase stores it as scrambled text. The code below carries the key, so share it
+              only with the people on the trip.
+            </Alert>
+          ) : confirmEncrypt ? (
+            <div className="card pad">
+              <p className="hint" style={{ margin: '0 0 12px' }}>
+                <strong>Before you turn it on:</strong> everyone on this trip must have opened the
+                app today, so they have the latest version. Afterwards their app shows{' '}
+                <strong>Locked</strong> until you send them the new code from this screen and they
+                import it. Nothing is lost either way.
+              </p>
+              <div className="btn-row">
+                <button className="btn ghost" onClick={() => setConfirmEncrypt(false)}>
+                  Not now
+                </button>
+                <button
+                  className="btn primary"
+                  onClick={() => {
+                    encryptTrip(trip.id)
+                    setConfirmEncrypt(false)
+                    setResult({
+                      ok: true,
+                      message:
+                        'Encryption is on. Now send everyone the new code from this screen.',
+                    })
+                  }}
+                >
+                  <Icon name="lock" size={18} />
+                  Turn on encryption
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Alert tone="warn">
+              <strong>Not encrypted yet.</strong> This trip was created before encryption existed,
+              so Firebase can read it. New trips are encrypted from the start.{' '}
+              <button className="link" onClick={() => setConfirmEncrypt(true)}>
+                Turn on encryption
+              </button>
+            </Alert>
+          )}
+        </div>
+
         <div className="section">
           <div className="section-head">
             <h2>Invite someone</h2>

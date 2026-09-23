@@ -16,7 +16,8 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import type { Id, Trip } from '../domain/types'
-import { decidePull, decidePush, type PushDecision } from './protocol'
+import { decidePull, decidePush, MAX_BLOB_CHARS, type PushDecision } from './protocol'
+import { isSealed, open, seal } from './crypto'
 
 /**
  * The Firestore adapter. It moves bytes and makes no decisions: every "should
@@ -25,6 +26,11 @@ import { decidePull, decidePush, type PushDecision } from './protocol'
  *
  * One document per trip, `trips/{tripId}`, holding the compressed ledger. The
  * server never needs to understand it; phones merge.
+ *
+ * Encryption sits at this boundary and nowhere else: what comes off the wire
+ * is opened with the trip's key before the protocol sees it, and what the
+ * protocol decides to write is sealed before it goes up. A document this
+ * phone cannot open stays sealed, and the protocol refuses to touch it.
  */
 
 export type SyncStatus =
@@ -40,6 +46,8 @@ export type SyncStatus =
   | 'too-large'
   /** The server copy was written by a newer app version; this one must update. */
   | 'outdated'
+  /** The server copy is encrypted with a key this phone does not hold. */
+  | 'locked'
   /** Something the app cannot recover from by itself, e.g. quota exhausted. */
   | 'error'
 
@@ -49,6 +57,8 @@ export interface Replica {
   get(tripId: Id): Trip | null
   /** Merge a trip that came from the server into local state. */
   adopt(trip: Trip): void
+  /** The trip's encryption key, or null for a trip that syncs in plaintext. */
+  key(tripId: Id): string | null
 }
 
 export interface SyncOptions {
@@ -82,7 +92,11 @@ interface Channel {
   /** Pending re-attach of a listener that died. */
   relisten: Timer | null
   listenDelay: number
-  /** The blob last seen on or written to the server. */
+  /**
+   * The document last seen on or written to the server, exactly as it is on
+   * the wire (sealed if encrypted). Opened afresh each time it is used, so a
+   * key that arrives later (an imported code) applies to it at once.
+   */
   remote: string | null
   pushing: boolean
   again: boolean
@@ -104,6 +118,7 @@ const backoff = (ms: number) => Math.min(ms * 2, RETRY_MAX_MS)
 function refusalStatus(d: Extract<PushDecision, { action: 'refuse' }>): SyncStatus {
   if (d.reason === 'too-large') return 'too-large'
   if (d.reason === 'newer-version') return 'outdated'
+  if (d.reason === 'locked') return 'locked'
   return 'error'
 }
 
@@ -212,12 +227,26 @@ export function createSync(opts: SyncOptions) {
       return
     }
 
-    const local = opts.replica.get(tripId)
+    let local = opts.replica.get(tripId)
     if (!local) return
+    const key = opts.replica.key(tripId)
+    const known = await open(ch.remote, key, tripId)
+    if (closed || channels.get(tripId) !== ch) return
+    // The last snapshot may have arrived while this phone lacked the key and
+    // so was never adopted. Now that it opens, take it in first, exactly as
+    // the listener would have.
+    const pull = decidePull(local, known)
+    if (pull.action === 'adopt') {
+      opts.replica.adopt(pull.merged)
+      local = pull.merged
+    }
+    // A key held while the server still has plaintext: write once even if
+    // the content matches, so the plaintext is replaced by ciphertext.
+    const upgrade = key !== null && ch.remote !== null && !isSealed(ch.remote)
     // Cheap pre-check against the last known server copy: most local changes
     // that follow an adopt have nothing new to send, and this avoids a
     // transaction (and its billed read) entirely.
-    const pre = decidePush(local, ch.remote, opts.deviceId)
+    const pre = decidePush(local, known, opts.deviceId, { rewrite: upgrade })
     if (pre.action === 'skip') {
       ch.retryDelay = RETRY_MIN_MS
       status(tripId, 'live')
@@ -244,21 +273,35 @@ export function createSync(opts: SyncOptions) {
       // stay free of side effects apart from the transaction's own calls.
       const outcome = await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref)
-        const blob = snap.exists() ? (snap.data().ledger as string) : null
+        const raw = snap.exists() ? (snap.data().ledger as string) : null
         const current = opts.replica.get(tripId)
         if (!current) return { kind: 'gone' as const }
-        const d = decidePush(current, blob, opts.deviceId)
+        const k = opts.replica.key(tripId)
+        const sealedOnServer = isSealed(raw)
+        // Opened with the key when it fits; left sealed otherwise, which the
+        // protocol refuses to overwrite.
+        const blob = await open(raw, k, tripId)
+        const d = decidePush(current, blob, opts.deviceId, {
+          rewrite: k !== null && raw !== null && !sealedOnServer,
+        })
         if (d.action === 'write') {
-          tx.set(ref, { ledger: d.blob, updatedAt: serverTimestamp(), updatedBy: me })
-          return { kind: 'wrote' as const, blob: d.blob, merged: d.merged }
+          const wire = k ? await seal(d.blob, k, tripId) : d.blob
+          if (wire.length > MAX_BLOB_CHARS) {
+            return {
+              kind: 'refuse' as const,
+              decision: { action: 'refuse', reason: 'too-large', chars: wire.length } as const,
+            }
+          }
+          tx.set(ref, { ledger: wire, updatedAt: serverTimestamp(), updatedBy: me })
+          return { kind: 'wrote' as const, wire, merged: d.merged }
         }
         if (d.action === 'refuse') return { kind: 'refuse' as const, decision: d }
-        return { kind: 'skip' as const, blob }
+        return { kind: 'skip' as const, raw }
       })
 
       if (outcome.kind === 'wrote') {
         stats.writes += 1
-        ch.remote = outcome.blob
+        ch.remote = outcome.wire
         ch.retryDelay = RETRY_MIN_MS
         // The write may have merged in records that were already on the
         // server; hand those back to this phone as well.
@@ -267,7 +310,7 @@ export function createSync(opts: SyncOptions) {
       } else if (outcome.kind === 'refuse') {
         status(tripId, refusalStatus(outcome.decision))
       } else if (outcome.kind === 'skip') {
-        ch.remote = outcome.blob
+        ch.remote = outcome.raw
         ch.retryDelay = RETRY_MIN_MS
         status(tripId, 'live')
       }
@@ -287,24 +330,38 @@ export function createSync(opts: SyncOptions) {
 
   function listen(tripId: Id, ch: Channel): void {
     if (closed || channels.get(tripId) !== ch) return
+    // Snapshots are handled in arrival order even though opening one is
+    // async: each waits for the previous, so an older document can never
+    // overtake a newer one and be adopted after it.
+    let queue: Promise<void> = Promise.resolve()
+    const handle = async (raw: string | null) => {
+      const key = opts.replica.key(tripId)
+      const sealedOnServer = isSealed(raw)
+      const blob = await open(raw, key, tripId)
+      if (closed || channels.get(tripId) !== ch) return
+      ch.remote = raw
+      const local = opts.replica.get(tripId)
+      if (!local) return
+      const pull = decidePull(local, blob)
+      const current = pull.action === 'adopt' ? pull.merged : local
+      if (pull.action === 'adopt') opts.replica.adopt(pull.merged)
+      // This phone may hold records the server lacks — a trip created
+      // before sync existed, or edits made offline. Send them up. A key held
+      // against a plaintext server copy is sent up too, as ciphertext.
+      const next = decidePush(current, blob, opts.deviceId, {
+        rewrite: key !== null && raw !== null && !sealedOnServer,
+      })
+      if (next.action === 'write') void push(tripId)
+      else if (next.action === 'refuse') status(tripId, refusalStatus(next))
+      else status(tripId, 'live')
+    }
     ch.unsubscribe = onSnapshot(
       doc(db, 'trips', tripId),
       (snap) => {
         stats.snapshots += 1
         ch.listenDelay = RETRY_MIN_MS
-        const blob = snap.exists() ? (snap.data().ledger as string) : null
-        ch.remote = blob
-        const local = opts.replica.get(tripId)
-        if (!local) return
-        const pull = decidePull(local, blob)
-        const current = pull.action === 'adopt' ? pull.merged : local
-        if (pull.action === 'adopt') opts.replica.adopt(pull.merged)
-        // This phone may hold records the server lacks — a trip created
-        // before sync existed, or edits made offline. Send them up.
-        const next = decidePush(current, blob, opts.deviceId)
-        if (next.action === 'write') void push(tripId)
-        else if (next.action === 'refuse') status(tripId, refusalStatus(next))
-        else status(tripId, 'live')
+        const raw = snap.exists() ? (snap.data().ledger as string) : null
+        queue = queue.then(() => handle(raw)).catch(() => undefined)
       },
       () => {
         // Firestore ends a listener for good after any error (a quota limit,

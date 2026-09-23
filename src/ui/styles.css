@@ -26,7 +26,7 @@
   --line-strong: rgba(148, 163, 184, 0.3);
   --text: #eef3fb;
   --text-dim: #9fb0c6;
-  --text-faint: #6b7d95;
+  --text-faint: #7b8da6;
   --accent: #2dd4bf;
   --accent-2: #14b8a6;
   --accent-ink: #04211f;
@@ -51,6 +51,16 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Keyboard and switch-control users get one clear ring; pointer taps get none. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-soft);
 }
 
 /*
@@ -195,7 +205,7 @@ body {
 }
 
 .section {
-  margin: 0 0 22px;
+  margin: 0 0 24px;
 }
 
 .section > h2,
@@ -523,6 +533,53 @@ body {
 
 .hero .foot .right {
   white-space: nowrap;
+}
+
+.hero .foot .lock {
+  display: inline-flex;
+  align-items: center;
+  color: var(--positive);
+  opacity: 0.85;
+}
+
+/* A button that reads as a link inside a sentence. */
+.btn.link,
+button.link {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* The expense detail hero: amount, payer, and what it means for the reader. */
+.hero.detail .headline {
+  font-size: 2.25rem;
+}
+
+.hero .paid-by {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.9375rem;
+  color: var(--text-dim);
+}
+
+.hero .paid-by strong {
+  color: var(--text);
+}
+
+.hero .lede.mine.pos strong {
+  color: var(--positive);
+}
+.hero .lede.mine.neg strong {
+  color: var(--negative);
 }
 
 /* ---------- pills ---------- */
@@ -1175,6 +1232,231 @@ details.howto .body strong {
     opacity: 0;
     transform: translateY(10px);
   }
+}
+
+/* ---------- home: standing across trips ---------- */
+
+.standing {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.standing-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.standing-row + .standing-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.standing .kicker {
+  margin: 0;
+}
+
+.standing .verdict {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.standing .verdict.pos {
+  color: var(--positive);
+}
+.standing .verdict.neg {
+  color: var(--negative);
+}
+.standing .verdict.zero {
+  color: var(--text-dim);
+}
+
+.trip-card .facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.trip-card .when {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-faint);
+}
+
+/* ---------- hero extras ---------- */
+
+.hero .hero-cta {
+  margin-top: 14px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.9375rem;
+}
+
+.hero .foot .dim {
+  color: var(--text-faint);
+  font-weight: 450;
+}
+
+/* Category glyph in a list row's meta line. */
+.row .meta .cat {
+  vertical-align: -2px;
+  margin-right: 5px;
+  color: var(--text-faint);
+}
+
+/* Payer over payee. */
+.avatar-pair {
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 40px;
+}
+
+.avatar-pair .avatar {
+  position: absolute;
+  border: 2px solid var(--surface);
+}
+
+.avatar-pair .avatar:first-child {
+  left: 0;
+  top: 0;
+}
+
+.avatar-pair .avatar:last-child {
+  left: 14px;
+  top: 12px;
+}
+
+/* Proportional bar under each balance. */
+.balance-row .bar {
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.balance-row .bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-faint);
+  transition: width 0.4s var(--ease);
+}
+
+.balance-row .bar.pos > span {
+  background: var(--positive);
+}
+
+.balance-row .bar.neg > span {
+  background: var(--negative);
+}
+
+/* ---------- editor: quick chips and payer picker ---------- */
+
+.chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip.pick {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.chip.pick.on {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.people-pick {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+  margin: 0 -2px;
+}
+
+.people-pick::-webkit-scrollbar {
+  display: none;
+}
+
+.people-pick .person {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 76px;
+  padding: 10px 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.people-pick .person .avatar {
+  transition: transform 0.15s var(--ease), box-shadow 0.15s;
+}
+
+.people-pick .person.on {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.people-pick .person.on .avatar {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.people-pick .person.gone {
+  opacity: 0.55;
+}
+
+.people-pick .chip.me {
+  margin: -2px 0 0;
+}
+
+.people-pick .pname {
+  max-width: 100%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- misc ---------- */

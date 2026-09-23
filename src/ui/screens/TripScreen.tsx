@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
-import { computeSplit } from '../../domain/split'
 import { findProbableDuplicates, findProbableDuplicateSettlements } from '../../domain/merge'
 import { unsyncableExpenses } from '../../domain/ledger'
 import { formatMoney } from '../../domain/money'
 import {
   Alert,
   Avatar,
+  AvatarPair,
   AvatarStack,
   Empty,
   Money,
@@ -24,6 +24,8 @@ import { Icon } from '../icons'
 import { navigate } from '../router'
 import { useToast } from '../toast'
 import { dayLabel } from '../dates'
+import { myLineOn } from '../expenseLines'
+import { categoryOf } from '../categories'
 import type { Expense, Id, Trip } from '../../domain/types'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import type { SyncStatus } from '../../sync/engine'
@@ -55,6 +57,11 @@ const SYNC: Record<
     label: 'Update needed',
     tone: 'bad',
     note: 'Someone saved this trip with a newer version. Close the app fully and open it again.',
+  },
+  locked: {
+    label: 'Locked',
+    tone: 'bad',
+    note: 'This trip is encrypted with a key this phone does not have. Ask someone on the trip to share it again, then import that code.',
   },
   error: {
     label: 'Sync problem',
@@ -155,7 +162,8 @@ function BalanceHero({
   me: Id | undefined
   sync: SyncStatus | null
 }) {
-  const { setMyself } = useStore()
+  const { db, setMyself } = useStore()
+  const encrypted = !!db.keys[trip.id]
   const totals = useMemo(() => computeTotals(trip), [trip])
   const members = liveMembers(trip)
   const mine = me ? totals.balances.find((b) => b.memberId === me) : undefined
@@ -209,13 +217,25 @@ function BalanceHero({
         </>
       )}
       {note && <p className="note">{note}</p>}
+      {mine && mine.netMinor !== 0 && members.length > 1 && (
+        <button className="btn hero-cta" onClick={() => navigate(`/trip/${trip.id}/settle`)}>
+          <Icon name="handshake" size={18} />
+          {mine.netMinor < 0 ? 'Settle up' : 'See who pays you'}
+        </button>
+      )}
       <div className="foot">
         <div className="left">
           <AvatarStack members={members} />
           <span>{countOf(members.length, 'person', 'people')}</span>
+          {encrypted && (
+            <span className="lock" title="End-to-end encrypted">
+              <Icon name="lock" size={13} />
+            </span>
+          )}
         </div>
         <span className="num right">
           <strong>{formatMoney(totals.totalSpentMinor, trip.currency)}</strong> spent
+          <span className="dim"> · {countOf(liveExpenses(trip).length, 'expense', 'expenses')}</span>
         </span>
       </div>
     </div>
@@ -279,30 +299,6 @@ function Warnings({ trip }: { trip: Trip }) {
   )
 }
 
-/**
- * The small line under an expense's amount: what it means for the reader.
- * "you owe ₹800" when someone else paid and you were in the split, "you lent
- * ₹1,600" when you paid for others. Where the reader stands on each line,
- * without doing arithmetic.
- */
-function myLineOn(
-  expense: Expense,
-  me: Id | undefined,
-  currency: Trip['currency'],
-): { text: string; tone: 'pos' | 'neg' | '' } | null {
-  if (!me) return null
-  const split = computeSplit(expense.amountMinor, expense.splitMode, expense.parts)
-  if (!split.ok) return null
-  const share = split.shares.get(me) ?? 0
-  if (expense.paidBy === me) {
-    const lent = expense.amountMinor - share
-    if (lent <= 0) return { text: 'just you', tone: '' }
-    return { text: `you lent ${formatMoney(lent, currency)}`, tone: 'pos' }
-  }
-  if (share <= 0) return { text: 'not involved', tone: '' }
-  return { text: `you owe ${formatMoney(share, currency)}`, tone: 'neg' }
-}
-
 interface Day {
   date: string
   totalMinor: number
@@ -326,6 +322,7 @@ function groupByDay(expenses: Expense[]): Day[] {
 
 function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
   const { deleteSettlement, restoreSettlement } = useStore()
+  const members = useMemo(() => liveMembers(trip), [trip])
   const { show: toast } = useToast()
   const expenses = useMemo(() => liveExpenses(trip), [trip])
   // liveExpenses is already newest-first by date, so grouping is one pass.
@@ -380,7 +377,10 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                           {e.paidBy === me && <span className="chip tiny accent">you paid</span>}
                         </div>
                         <div className="meta">
-                          {shortName(e.paidBy)} paid · {countOf(e.parts.length, 'person', 'people')}
+                          <Icon name={categoryOf(e.description).icon} size={12} className="cat" />
+                          {shortName(e.paidBy)} paid
+                          {/* Show the exception, not the norm: only when not everyone is in. */}
+                          {e.parts.length < members.length && ` · ${e.parts.length} of ${members.length}`}
                         </div>
                       </div>
                       <div className="amount">
@@ -402,9 +402,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
           <div className="card">
             {settlements.map((s) => (
               <div key={s.id} className="row static">
-                <span className="avatar unknown" aria-hidden="true">
-                  <Icon name="handshake" size={18} />
-                </span>
+                <AvatarPair from={trip.members[s.fromMember]} to={trip.members[s.toMember]} />
                 <div className="grow">
                   <div className="title pay-line">
                     <span>{shortName(s.fromMember)}</span>
@@ -459,6 +457,10 @@ function BalancesTab({ trip }: { trip: Trip }) {
     )
   }
 
+  // The longest bar is the largest debt or credit; everyone else is drawn
+  // relative to it, so the picture says "who carried this trip" at a glance.
+  const scale = Math.max(1, ...totals.balances.map((b) => Math.abs(b.netMinor)))
+
   return (
     <div className="section">
       <h2>Who is up, who is down</h2>
@@ -467,8 +469,10 @@ function BalancesTab({ trip }: { trip: Trip }) {
           const member = trip.members[b.memberId]
           const label =
             b.netMinor > 0 ? 'is owed' : b.netMinor < 0 ? 'owes the group' : 'all square'
+          const tone = b.netMinor > 0 ? 'pos' : b.netMinor < 0 ? 'neg' : 'zero'
+          const width = Math.round((Math.abs(b.netMinor) / scale) * 100)
           return (
-            <div key={b.memberId} className="row static">
+            <div key={b.memberId} className="row static balance-row">
               {member ? <Avatar member={member} /> : <UnknownAvatar />}
               <div className="grow">
                 <div className="title">
@@ -479,6 +483,9 @@ function BalancesTab({ trip }: { trip: Trip }) {
                 <div className="meta">
                   {label} · paid <Money amount={b.paidMinor} currency={trip.currency} />, used{' '}
                   <Money amount={b.owedMinor} currency={trip.currency} />
+                </div>
+                <div className={`bar ${tone}`} aria-hidden="true">
+                  <span style={{ width: `${Math.max(width, b.netMinor === 0 ? 0 : 3)}%` }} />
                 </div>
               </div>
               <div className="amount">

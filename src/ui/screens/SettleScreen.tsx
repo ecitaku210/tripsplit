@@ -3,7 +3,7 @@ import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { settlementPlan } from '../../domain/settle'
 import { formatMinor, parseAmount } from '../../domain/money'
-import { Alert, Avatar, Empty, Money, NotFound, TopBar, UnknownAvatar, firstName } from '../components'
+import { Alert, AvatarPair, Empty, Money, NotFound, TopBar, firstName } from '../components'
 import { Icon } from '../icons'
 import { back } from '../router'
 import type { Id, Minor } from '../../domain/types'
@@ -77,10 +77,9 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
               <h2>Who pays whom</h2>
               <div className="card">
                 {plan.map((t) => {
-                  const from = trip.members[t.fromMember]
                   return (
                   <div key={`${t.fromMember}>${t.toMember}`} className="row static">
-                    {from ? <Avatar member={from} /> : <UnknownAvatar />}
+                    <AvatarPair from={trip.members[t.fromMember]} to={trip.members[t.toMember]} />
                     <div className="grow">
                       <div className="title pay-line">
                         <span>{shortName(t.fromMember)}</span>

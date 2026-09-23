@@ -12,7 +12,8 @@ import { useEffect, useState } from 'react'
 export type Route =
   | { name: 'home' }
   | { name: 'trip'; tripId: string }
-  | { name: 'expense'; tripId: string; expenseId: string | null }
+  /** `expenseId` null is a new expense. `edit` opens the form; otherwise the detail view. */
+  | { name: 'expense'; tripId: string; expenseId: string | null; edit: boolean }
   | { name: 'settle'; tripId: string }
   | { name: 'share'; tripId: string }
   | { name: 'people'; tripId: string }
@@ -39,12 +40,11 @@ export function parseHash(hash: string): Route {
         return { name: 'share', tripId }
       case 'people':
         return { name: 'people', tripId }
-      case 'expense':
-        return {
-          name: 'expense',
-          tripId,
-          expenseId: segments[3] && segments[3] !== 'new' ? decodeURIComponent(segments[3]) : null,
-        }
+      case 'expense': {
+        const expenseId =
+          segments[3] && segments[3] !== 'new' ? decodeURIComponent(segments[3]) : null
+        return { name: 'expense', tripId, expenseId, edit: expenseId === null || segments[4] === 'edit' }
+      }
       default:
         return { name: 'trip', tripId }
     }
@@ -114,21 +114,32 @@ export function back(fallback = '/'): void {
 }
 
 /**
+ * Leave the last `steps` in-app screens at once and land on `to`: after
+ * deleting an expense from its editor, both the editor and the detail view
+ * behind it are about something that no longer exists. When fewer in-app
+ * entries than that exist (a deep link), it goes back as far as it can and
+ * shows `to` in place of whatever is there.
+ */
+export function leave(to: string, steps: number): void {
+  const n = Math.min(depth(), steps)
+  if (n === 0) {
+    replace(to)
+    return
+  }
+  const onArrive = () => {
+    window.removeEventListener('popstate', onArrive)
+    if (n < steps || window.location.hash.replace(/^#/, '') !== to) replace(to)
+  }
+  window.addEventListener('popstate', onArrive)
+  window.history.go(-n)
+}
+
+/**
  * Drop every in-app entry and land on `to`, for when the thing the history
  * was about no longer exists (a deleted trip). Going back from there leaves
  * the app, as it should, instead of stepping through screens of a trip that
  * is gone.
  */
 export function reset(to: string): void {
-  const d = depth()
-  if (d === 0) {
-    replace(to)
-    return
-  }
-  const onArrive = () => {
-    window.removeEventListener('popstate', onArrive)
-    if (window.location.hash.replace(/^#/, '') !== to) replace(to)
-  }
-  window.addEventListener('popstate', onArrive)
-  window.history.go(-d)
+  leave(to, Number.POSITIVE_INFINITY)
 }
