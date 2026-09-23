@@ -5,7 +5,7 @@ import { settlementPlan } from '../../domain/settle'
 import { formatMinor, parseAmount } from '../../domain/money'
 import { Alert, Avatar, Empty, Money, NotFound, TopBar, UnknownAvatar, firstName } from '../components'
 import { Icon } from '../icons'
-import { navigate } from '../router'
+import { back } from '../router'
 import type { Id, Minor } from '../../domain/types'
 
 interface Recorded {
@@ -35,7 +35,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
 
   return (
     <>
-      <TopBar title="Settle up" subtitle={trip.name} onBack />
+      <TopBar title="Settle up" subtitle={trip.name} onBack backTo={`/trip/${tripId}`} />
       <div className="content no-fab">
         {recorded.length > 0 && (
           <div className="section">
@@ -130,7 +130,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
         <ManualRepayment tripId={tripId} />
 
         <div className="spacer" />
-        <button className="btn block ghost" onClick={() => navigate(`/trip/${tripId}`)}>
+        <button className="btn block ghost" onClick={() => back(`/trip/${tripId}`)}>
           Back to trip
         </button>
       </div>

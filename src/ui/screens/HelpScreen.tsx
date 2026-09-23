@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Alert, TopBar } from '../components'
 import { Icon } from '../icons'
-import { navigate } from '../router'
+import { back } from '../router'
 
 /**
  * Help that lives inside the app, at its own address (#/help), so anyone on a
@@ -259,7 +259,7 @@ export function HelpScreen() {
           </p>
         </div>
 
-        <button className="btn block ghost" onClick={() => navigate('/')}>
+        <button className="btn block ghost" onClick={() => back('/')}>
           Back to trips
         </button>
       </div>

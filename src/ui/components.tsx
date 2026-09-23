@@ -8,12 +8,15 @@ export function TopBar({
   title,
   subtitle,
   onBack,
+  backTo,
   right,
   brand,
 }: {
   title: string
   subtitle?: string
   onBack?: boolean
+  /** Where "back" lands when this screen was opened from a link or refresh. */
+  backTo?: string
   right?: ReactNode
   /** Show the app mark before the title (home screen only). */
   brand?: boolean
@@ -21,7 +24,7 @@ export function TopBar({
   return (
     <header className="topbar">
       {onBack && (
-        <button className="btn ghost icon-only" onClick={back} aria-label="Go back">
+        <button className="btn ghost icon-only" onClick={() => back(backTo)} aria-label="Go back">
           <Icon name="back" />
         </button>
       )}

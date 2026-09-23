@@ -81,6 +81,7 @@ export function TripScreen({ tripId }: { tripId: Id }) {
         title={trip.name}
         subtitle={countOf(members.length, 'person', 'people')}
         onBack
+        backTo="/"
         right={
           <button
             className="btn ghost icon"

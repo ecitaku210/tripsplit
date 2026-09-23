@@ -3,7 +3,7 @@ import { useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { Avatar, Money, NotFound, TopBar } from '../components'
 import { Icon } from '../icons'
-import { navigate } from '../router'
+import { reset } from '../router'
 import { useToast } from '../toast'
 import type { Id } from '../../domain/types'
 
@@ -42,7 +42,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
 
   return (
     <>
-      <TopBar title="People" subtitle={trip.name} onBack />
+      <TopBar title="People" subtitle={trip.name} onBack backTo={`/trip/${trip.id}`} />
       <div className="content no-fab">
         <div className="section">
           <h2>On this trip</h2>
@@ -202,7 +202,10 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
               // back with everything that arrived in the meantime.
               const id = trip.id
               deleteTrip(id)
-              navigate('/')
+              // Every screen behind this one belonged to the trip just
+              // deleted, so drop them all rather than leave "back" stepping
+              // through a trip that is gone.
+              reset('/')
               toast(`Deleted ${trip.name} from this phone`, {
                 action: { label: 'Undo', onClick: () => restoreTrip(id) },
               })
