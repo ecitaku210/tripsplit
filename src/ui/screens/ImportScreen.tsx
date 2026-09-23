@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../storage/store'
 import { decodeLedger, parseLedger } from '../../domain/ledger'
-import { TopBar } from '../components'
+import { Alert, TopBar } from '../components'
+import { Icon } from '../icons'
 import { navigate, replace } from '../router'
 import { describe } from './ShareScreen'
 
@@ -69,49 +70,52 @@ export function ImportScreen({ payload }: { payload: string | null }) {
       <TopBar title="Import a trip" onBack />
       <div className="content no-fab">
         <div className="section">
-          <div className="notice">
+          <Alert tone="info">
             Importing <strong>merges</strong> into what you already have. It never overwrites your
             expenses, and running it twice changes nothing the second time.
-          </div>
+          </Alert>
         </div>
 
         <div className="section">
-          <label className="btn primary block" style={{ cursor: 'pointer' }}>
-            Open a .tripsplit.json file
-            <input
-              type="file"
-              accept=".json,application/json"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void applyFile(f)
-                e.target.value = ''
-              }}
+          <div className="card pad">
+            <label className="btn primary block" style={{ cursor: 'pointer' }}>
+              <Icon name="file" size={18} />
+              Open a .tripsplit.json file
+              <input
+                type="file"
+                accept=".json,application/json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) void applyFile(f)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            <p className="kicker" style={{ margin: '16px 0 8px' }}>
+              Or paste a share code
+            </p>
+            <textarea
+              className="code-box"
+              value={pasted}
+              placeholder="Paste the long code your friend sent"
+              onChange={(e) => setPasted(e.target.value)}
             />
-          </label>
-        </div>
-
-        <div className="section">
-          <h2>Or paste a share code</h2>
-          <textarea
-            className="code-box"
-            value={pasted}
-            placeholder="Paste the long code your friend sent"
-            onChange={(e) => setPasted(e.target.value)}
-          />
-          <div className="spacer" />
-          <button
-            className="btn block"
-            disabled={pasted.trim() === ''}
-            onClick={() => apply(pasted)}
-          >
-            Import
-          </button>
+            <div className="spacer" />
+            <button
+              className="btn block"
+              disabled={pasted.trim() === ''}
+              onClick={() => apply(pasted)}
+            >
+              <Icon name="download" size={18} />
+              Import
+            </button>
+          </div>
         </div>
 
         {result && (
           <div className="section">
-            <div className={result.ok ? 'notice good' : 'error'}>{result.message}</div>
+            <Alert tone={result.ok ? 'good' : 'bad'}>{result.message}</Alert>
             {result.ok && result.tripId && (
               <>
                 <div className="spacer" />
@@ -120,13 +124,13 @@ export function ImportScreen({ payload }: { payload: string | null }) {
                   onClick={() => navigate(`/trip/${result.tripId}`)}
                 >
                   Open the trip
+                  <Icon name="arrow" size={18} />
                 </button>
               </>
             )}
           </div>
         )}
 
-        <div className="spacer" />
         <button className="btn block ghost" onClick={() => navigate('/')}>
           Back to trips
         </button>

@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useStore, useTrip } from '../../storage/store'
 import { buildLedgerFile, decodeLedger, encodeLedger, parseLedger } from '../../domain/ledger'
 import { liveExpenses } from '../../domain/balance'
-import { NotFound, TopBar } from '../components'
+import { Alert, NotFound, TopBar } from '../components'
+import { Icon } from '../icons'
 import { navigate } from '../router'
 import type { Id } from '../../domain/types'
 import type { MergeSummary } from '../../domain/merge'
@@ -107,73 +108,87 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
 
   return (
     <>
-      <TopBar title="Share / sync" subtitle={trip.name} onBack />
+      <TopBar title="Invite & share" subtitle={trip.name} onBack />
       <div className="content no-fab">
         <div className="section">
-          <div className="notice">
-            <strong>Everyday changes sync by themselves.</strong> Use this screen to invite someone
-            to the trip, or to swap updates by hand when there is no signal. Sending the same update
-            twice is harmless — each expense carries its own permanent id.
+          <div className="section-head">
+            <h2>Invite someone</h2>
+          </div>
+          <div className="card pad">
+            <p className="hint" style={{ margin: '0 0 12px' }}>
+              Send them this trip once. After they open it, every phone stays in step by itself —
+              no more sharing needed.
+            </p>
+            <button className="btn primary block" onClick={shareFile}>
+              <Icon name="share" size={18} />
+              Share to WhatsApp, AirDrop…
+            </button>
+            <div className="spacer" />
+            <div className="btn-row">
+              <button className="btn" onClick={downloadFile}>
+                <Icon name="download" size={18} />
+                Save file
+              </button>
+              <button className="btn" onClick={copyCode}>
+                <Icon name={copied ? 'check' : 'copy'} size={18} />
+                {copied ? 'Copied' : 'Copy code'}
+              </button>
+            </div>
+            <p className="hint">
+              The code is {Math.ceil(code.length / 1024)} KB of text and pastes into any chat. If
+              the chat app mangles it, send the file instead.
+            </p>
           </div>
         </div>
 
         <div className="section">
-          <h2>Send your copy</h2>
-          <button className="btn primary block" onClick={shareFile}>
-            Share to WhatsApp, AirDrop, email…
-          </button>
-          <div className="spacer" />
-          <div className="btn-row">
-            <button className="btn" onClick={downloadFile}>
-              Save file
-            </button>
-            <button className="btn" onClick={copyCode}>
-              {copied ? 'Copied ✓' : 'Copy code'}
-            </button>
+          <div className="section-head">
+            <h2>Receive a copy</h2>
           </div>
-          <p className="hint">
-            The code is {Math.ceil(code.length / 1024)} KB of text. If your chat app mangles it, send
-            the file instead.
-          </p>
-        </div>
-
-        <div className="section">
-          <h2>Take in someone else&apos;s copy</h2>
-          <label className="btn block" style={{ cursor: 'pointer' }}>
-            Open a .tripsplit.json file
-            <input
-              type="file"
-              accept=".json,application/json"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void importFromFile(f)
-                e.target.value = ''
-              }}
+          <div className="card pad">
+            <p className="hint" style={{ margin: '0 0 12px' }}>
+              Got a code or file from someone on this trip? Merge it in. Nothing you already have is
+              overwritten, and merging the same copy twice changes nothing.
+            </p>
+            <label className="btn block" style={{ cursor: 'pointer' }}>
+              <Icon name="file" size={18} />
+              Open a .tripsplit.json file
+              <input
+                type="file"
+                accept=".json,application/json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) void importFromFile(f)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            <div className="spacer" />
+            <textarea
+              className="code-box"
+              value={pasted}
+              placeholder="…or paste a share code here"
+              onChange={(e) => setPasted(e.target.value)}
             />
-          </label>
-          <div className="spacer" />
-          <textarea
-            className="code-box"
-            value={pasted}
-            placeholder="…or paste a share code here"
-            onChange={(e) => setPasted(e.target.value)}
-          />
-          <div className="spacer" />
-          <button
-            className="btn block"
-            disabled={pasted.trim() === ''}
-            onClick={() => applyImport(pasted)}
-          >
-            Merge into my copy
-          </button>
+            <div className="spacer" />
+            <button
+              className="btn block"
+              disabled={pasted.trim() === ''}
+              onClick={() => applyImport(pasted)}
+            >
+              <Icon name="download" size={18} />
+              Merge into my copy
+            </button>
+          </div>
         </div>
 
         {result && (
-          <div className={result.ok ? 'notice good' : 'error'}>{result.message}</div>
+          <div className="section">
+            <Alert tone={result.ok ? 'good' : 'bad'}>{result.message}</Alert>
+          </div>
         )}
 
-        <div className="spacer" />
         <button className="btn block ghost" onClick={() => navigate(`/trip/${tripId}`)}>
           Back to trip
         </button>

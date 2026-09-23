@@ -3,7 +3,8 @@ import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { settlementPlan } from '../../domain/settle'
 import { formatMinor, parseAmount } from '../../domain/money'
-import { Empty, Money, NotFound, TopBar } from '../components'
+import { Alert, Avatar, Empty, Money, NotFound, TopBar, UnknownAvatar, firstName } from '../components'
+import { Icon } from '../icons'
 import { navigate } from '../router'
 import type { Id, Minor } from '../../domain/types'
 
@@ -30,6 +31,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
   if (!trip) return <NotFound what="trip" />
 
   const nameOf = (id: Id) => trip.members[id]?.name ?? 'Someone (removed)'
+  const shortName = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'Someone')
 
   return (
     <>
@@ -37,8 +39,8 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
       <div className="content no-fab">
         {recorded.length > 0 && (
           <div className="section">
-            <div className="notice good">
-              <strong>Recorded on this phone:</strong>
+            <Alert tone="good">
+              <strong>Recorded:</strong>
               {recorded.map((r, i) => (
                 <div key={i}>
                   {r.fromName} → {r.toName} ·{' '}
@@ -47,44 +49,48 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
               ))}
               <div className="spacer" />
               Everyone else sees these as soon as this phone has signal.
-            </div>
+            </Alert>
           </div>
         )}
 
         {plan.length === 0 ? (
-          <Empty title="Nothing to settle">
+          <Empty icon="check" title="Nothing to settle">
             Everyone is square. If anyone has been offline, check again once they reconnect so
             their latest expenses are included.
           </Empty>
         ) : (
           <>
             <div className="section">
-              <div className="notice">
-                <strong>
-                  {plan.length} payment{plan.length > 1 ? 's' : ''} clears the whole group.
-                </strong>{' '}
-                Instead of everyone paying everyone, the debts are netted off first.
+              <div className="hero">
+                <p className="kicker">Settle up</p>
+                <p className="headline zero">
+                  {plan.length} payment{plan.length > 1 ? 's' : ''}
+                </p>
+                <p className="lede">
+                  {plan.length === 1 ? 'clears' : 'clear'} the whole group. Instead of everyone
+                  paying everyone, the debts are netted off first.
+                </p>
               </div>
             </div>
 
             <div className="section">
               <h2>Who pays whom</h2>
               <div className="card">
-                {plan.map((t) => (
-                  <div
-                    key={`${t.fromMember}>${t.toMember}`}
-                    className="row"
-                    style={{ cursor: 'default' }}
-                  >
+                {plan.map((t) => {
+                  const from = trip.members[t.fromMember]
+                  return (
+                  <div key={`${t.fromMember}>${t.toMember}`} className="row static">
+                    {from ? <Avatar member={from} /> : <UnknownAvatar />}
                     <div className="grow">
-                      <div className="title">
-                        {nameOf(t.fromMember)} → {nameOf(t.toMember)}
+                      <div className="title pay-line">
+                        <span>{shortName(t.fromMember)}</span>
+                        <Icon name="arrow" size={16} className="arrow" />
+                        <span>{shortName(t.toMember)}</span>
                       </div>
-                      <div className="meta">Tap Record when the money has moved</div>
+                      <div className="meta">{shortName(t.fromMember)} pays {shortName(t.toMember)}</div>
                     </div>
                     <div className="amount">
                       <Money amount={t.amountMinor} currency={trip.currency} />
-                    </div>
                     <button
                       className="btn icon"
                       onClick={() => {
@@ -105,14 +111,17 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                         ])
                       }}
                     >
+                      <Icon name="check" size={16} />
                       Record
                     </button>
+                    </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
               <p className="hint">
-                Only tap Record once the money has actually changed hands. It reaches everyone
-                else&apos;s phone as soon as this one has signal.
+                Tap <strong>Record</strong> only once the money has actually changed hands, and only
+                on one phone. It reaches everyone else as soon as this phone has signal.
               </p>
             </div>
           </>
@@ -155,6 +164,7 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
     return (
       <div className="section">
         <button className="btn block ghost" onClick={() => setOpen(true)}>
+          <Icon name="plus" size={18} />
           Record a different repayment
         </button>
       </div>
@@ -164,6 +174,7 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
   return (
     <div className="section">
       <h2>Record a repayment</h2>
+      <div className="card pad">
       <div className="field">
         <label>Who paid</label>
         <select value={fromId} onChange={(e) => setFrom(e.target.value)}>
@@ -220,8 +231,10 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
             setOpen(false)
           }}
         >
+          <Icon name="check" size={16} />
           Record
         </button>
+      </div>
       </div>
     </div>
   )

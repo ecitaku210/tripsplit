@@ -5,6 +5,7 @@ import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { formatMinor, parseAmount } from '../../domain/money'
 import { isIsoDate } from '../../domain/ledger'
 import { Avatar, Field, Money, NotFound, Segmented, TopBar } from '../components'
+import { Icon } from '../icons'
 import { back, navigate } from '../router'
 import type { Id, SplitMode } from '../../domain/types'
 
@@ -174,6 +175,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
       <TopBar title={existing ? 'Edit expense' : 'Add expense'} onBack />
       <div className="content no-fab">
         <Field label={`Amount (${trip.currency.code})`}>
+          <div className="amount-wrap">
+          <span className="sym" aria-hidden="true">{trip.currency.symbol.trim()}</span>
           <input
             className="amount-input num"
             // `decimal` gives the numeric keypad with a decimal point on iOS
@@ -187,6 +190,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
               setTouched(true)
             }}
           />
+          </div>
         </Field>
 
         <Field label="What was it for?">
@@ -338,6 +342,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
             Cancel
           </button>
           <button className="btn primary" disabled={!canSave} onClick={save}>
+            <Icon name="check" size={18} />
             Save
           </button>
         </div>
@@ -356,6 +361,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                 }
               }}
             >
+              <Icon name="trash" size={18} />
               Delete expense
             </button>
           </>
