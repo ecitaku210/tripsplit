@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { gzipSync } from 'fflate'
-import { buildLedgerFile, decodeLedger, encodeLedger, parseLedger } from './ledger'
+import {
+  buildLedgerFile,
+  decodeLedger,
+  encodeLedger,
+  isIsoDate,
+  parseLedger,
+  unsyncableExpenses,
+} from './ledger'
 import { makeExpense, makeMember, makeTrip, randomTrip } from './testkit'
 import { parseAmount, formatMinor, formatMoney } from './money'
 import { SCHEMA_VERSION } from './types'
@@ -79,7 +86,7 @@ describe('encode / decode round trip', () => {
   })
 
   it('tolerates the whitespace a chat app inserts when the code wraps', () => {
-    const trip = makeTrip('t', [makeMember('m1', 'Asha')])
+    const trip = makeTrip('trip-0001', [makeMember('m1', 'Asha')])
     const code = encodeLedger(buildLedgerFile({ t: trip }, 'devA'))
     const mangled = code.replace(/(.{40})/g, '$1\n  ')
     expect(decodeLedger(mangled).ok).toBe(true)
@@ -112,7 +119,7 @@ describe('encode / decode round trip', () => {
 
 describe('parseLedger — untrusted input', () => {
   const goodTrip = () => {
-    const t = makeTrip('t1', [makeMember('m1', 'Asha')])
+    const t = makeTrip('trip-0001', [makeMember('m1', 'Asha')])
     t.expenses.e1 = makeExpense({ id: 'e1', paidBy: 'm1', parts: [{ memberId: 'm1', weight: 1 }] })
     return t
   }
@@ -152,7 +159,7 @@ describe('parseLedger — untrusted input', () => {
     const r = parseLedger(wrap({ t1: t }))
     expect(r.ok).toBe(true)
     if (!r.ok) return
-    expect(Object.keys(r.file.trips.t1!.expenses)).toEqual(['e1'])
+    expect(Object.keys(r.file.trips['trip-0001']!.expenses)).toEqual(['e1'])
     expect(r.warnings.join(' ')).toContain('Skipped 1')
   })
 
@@ -173,7 +180,7 @@ describe('parseLedger — untrusted input', () => {
     const r = parseLedger(wrap({ t1: t }))
     expect(r.ok).toBe(true)
     if (!r.ok) return
-    expect(r.file.trips.t1!.expenses).toEqual({})
+    expect(r.file.trips['trip-0001']!.expenses).toEqual({})
     expect(r.warnings.join(' ')).toContain('Skipped 1')
   })
 
@@ -182,7 +189,7 @@ describe('parseLedger — untrusted input', () => {
     ;(t.expenses.e1 as unknown as Record<string, unknown>).surprise = { deeply: 'nested' }
     const r = parseLedger(wrap({ t1: t }))
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.file.trips.t1!.expenses.e1).not.toHaveProperty('surprise')
+    if (r.ok) expect(r.file.trips['trip-0001']!.expenses.e1).not.toHaveProperty('surprise')
   })
 
   it('does not let an id smuggle in path or script characters', () => {
@@ -190,7 +197,7 @@ describe('parseLedger — untrusted input', () => {
     ;(t.expenses.e1 as unknown as Record<string, unknown>).id = '../../<script>'
     const r = parseLedger(wrap({ t1: t }))
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.file.trips.t1!.expenses).toEqual({})
+    if (r.ok) expect(r.file.trips['trip-0001']!.expenses).toEqual({})
   })
 
   it('refuses an id of __proto__ instead of reassigning a prototype', () => {
@@ -203,7 +210,7 @@ describe('parseLedger — untrusted input', () => {
     const r = parseLedger(JSON.parse(JSON.stringify(wrap({ t1: t }))))
     expect(r.ok).toBe(true)
     if (!r.ok) return
-    const expenses = r.file.trips.t1!.expenses
+    const expenses = r.file.trips['trip-0001']!.expenses
     expect(expenses).toEqual({})
     expect(Object.getPrototypeOf(expenses)).toBe(Object.prototype)
     expect(({} as Record<string, unknown>).amountMinor).toBeUndefined()
@@ -214,13 +221,13 @@ describe('parseLedger — untrusted input', () => {
     t.name = 'x'.repeat(5000)
     const r = parseLedger(wrap({ t1: t }))
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.file.trips.t1!.name.length).toBeLessThanOrEqual(120)
+    if (r.ok) expect(r.file.trips['trip-0001']!.name.length).toBeLessThanOrEqual(120)
   })
 })
 
 describe('parseLedger — date handling', () => {
   const wrapTrip = (patch: Record<string, unknown>) => {
-    const t = makeTrip('t1', [makeMember('m1', 'Asha')])
+    const t = makeTrip('trip-0001', [makeMember('m1', 'Asha')])
     t.expenses.e1 = makeExpense({ id: 'e1', paidBy: 'm1', parts: [{ memberId: 'm1', weight: 1 }] })
     ;(t.expenses as Record<string, unknown>).e1 = { ...t.expenses.e1, ...patch }
     return {
@@ -244,18 +251,57 @@ describe('parseLedger — date handling', () => {
     // "2026-01-0199" became "2026-01-01" and passed as valid.
     const r = parseLedger(wrapTrip({ date }))
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.file.trips.t1!.expenses).toEqual({})
+    if (r.ok) expect(r.file.trips['trip-0001']!.expenses).toEqual({})
   })
 
   it('accepts a real leap day', () => {
     const r = parseLedger(wrapTrip({ date: '2028-02-29' }))
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.file.trips.t1!.expenses.e1?.date).toBe('2028-02-29')
+    if (r.ok) expect(r.file.trips['trip-0001']!.expenses.e1?.date).toBe('2028-02-29')
   })
 
   it('rejects a leap day in a non-leap year', () => {
     const r = parseLedger(wrapTrip({ date: '2026-02-29' }))
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.file.trips.t1!.expenses).toEqual({})
+    if (r.ok) expect(r.file.trips['trip-0001']!.expenses).toEqual({})
+  })
+})
+
+describe('audit fixes', () => {
+  it('G: refuses a trip id the Firestore rules would refuse (under 8 characters)', () => {
+    const short = makeTrip('abcdefg', [makeMember('m1', 'Asha')])
+    const ok = makeTrip('abcdefgh', [makeMember('m1', 'Asha')])
+    expect(parseLedger(JSON.parse(JSON.stringify(buildLedgerFile({ a: short }, 'x')))).ok).toBe(false)
+    expect(parseLedger(JSON.parse(JSON.stringify(buildLedgerFile({ a: ok }, 'x')))).ok).toBe(true)
+  })
+
+  it('A: shares one date rule with the editor', () => {
+    expect(isIsoDate('2026-09-23')).toBe(true)
+    expect(isIsoDate('')).toBe(false)
+    expect(isIsoDate('2026-02-30')).toBe(false)
+  })
+
+  it('A: finds an expense that cannot reach other phones', () => {
+    const t = makeTrip('trip-0001', [makeMember('m1', 'Asha')])
+    t.expenses.bad = makeExpense({ id: 'bad', date: '' })
+    t.expenses.good = makeExpense({ id: 'good' })
+    expect(unsyncableExpenses(t).map((e) => e.id)).toEqual(['bad'])
+  })
+
+  it('A CONTROL: flags nothing on a realistic, valid trip', () => {
+    for (let seed = 1; seed <= 10; seed += 1) expect(unsyncableExpenses(randomTrip(seed))).toEqual([])
+  })
+
+  it('A CONTROL: ignores a deleted bad expense, which nobody needs to fix', () => {
+    const t = makeTrip('trip-0001', [makeMember('m1', 'Asha')])
+    t.expenses.bad = makeExpense({ id: 'bad', date: '', deletedAt: 5 })
+    expect(unsyncableExpenses(t)).toEqual([])
+  })
+
+  it('F: tells a newer-version ledger apart from garbage', () => {
+    const t = makeTrip('trip-0001', [makeMember('m1', 'Asha')])
+    const newer = parseLedger({ ...buildLedgerFile({ [t.id]: t }, 'x'), schema: SCHEMA_VERSION + 1 })
+    expect(newer).toMatchObject({ ok: false, reason: 'newer-version' })
+    expect(parseLedger({ kind: 'nope' })).not.toHaveProperty('reason')
   })
 })

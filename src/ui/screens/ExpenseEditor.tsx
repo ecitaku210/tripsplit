@@ -3,6 +3,7 @@ import { todayISO, useStore, useTrip } from '../../storage/store'
 import { liveMembers } from '../../domain/balance'
 import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { formatMinor, parseAmount } from '../../domain/money'
+import { isIsoDate } from '../../domain/ledger'
 import { Avatar, Field, Money, NotFound, Segmented, TopBar } from '../components'
 import { back, navigate } from '../router'
 import type { Id, SplitMode } from '../../domain/types'
@@ -126,7 +127,11 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
             ? split.message
             : description.trim() === ''
               ? 'Add a short description so everyone knows what this was.'
-              : members.length === 0
+              : // The date picker's Clear button leaves "". Other phones reject
+                // that, so the expense would silently never reach them.
+                !isIsoDate(date)
+                ? 'Pick a date.'
+                : members.length === 0
                 ? 'Add someone to the trip before logging an expense.'
                 : paidBy === ''
                   ? 'Pick who paid.'

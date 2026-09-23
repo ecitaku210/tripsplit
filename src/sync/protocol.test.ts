@@ -8,7 +8,7 @@ const clone = (t: Trip): Trip => JSON.parse(JSON.stringify(t))
 const blobOf = (t: Trip, device = 'server') => encodeLedger(buildLedgerFile({ [t.id]: t }, device))
 
 function baseTrip(): Trip {
-  return makeTrip('trip1', [makeMember('m1', 'Asha'), makeMember('m2', 'Bilal'), makeMember('m3', 'Chen')])
+  return makeTrip('trip-0001', [makeMember('m1', 'Asha'), makeMember('m2', 'Bilal'), makeMember('m3', 'Chen')])
 }
 
 /**
@@ -98,7 +98,7 @@ describe('decidePush', () => {
     expect(d.action).toBe('write')
     if (d.action !== 'write') return
     expect(Object.keys(d.merged.expenses).sort()).toEqual(['mine', 'theirs'])
-    expect(Object.keys(readRemote(d.blob, 'trip1')!.expenses).sort()).toEqual(['mine', 'theirs'])
+    expect(Object.keys(readRemote(d.blob, 'trip-0001')!.expenses).sort()).toEqual(['mine', 'theirs'])
   })
 
   it('replaces an unreadable server document instead of choking on it', () => {
@@ -115,8 +115,10 @@ describe('decidePush', () => {
       t.expenses[`e${i}`] = makeExpense({ id: `e${i}`, description: junk.slice(0, 200) })
     }
     const d = decidePush(t, null, 'dev0')
-    expect(d.action).toBe('refuse')
-    if (d.action === 'refuse') expect(d.chars).toBeGreaterThan(MAX_BLOB_CHARS)
+    expect(d).toMatchObject({ action: 'refuse', reason: 'too-large' })
+    if (d.action === 'refuse' && d.reason === 'too-large') {
+      expect(d.chars).toBeGreaterThan(MAX_BLOB_CHARS)
+    }
   })
 })
 
@@ -151,7 +153,7 @@ describe('sync between phones, end to end over a fake server', () => {
     const net = network(phones)
     net.settle()
 
-    const server = readRemote(net.server.blob, 'trip1')!
+    const server = readRemote(net.server.blob, 'trip-0001')!
     expect(Object.keys(server.expenses).sort()).toEqual(['e0', 'e1', 'e2'])
     for (const p of net.local) expect(fingerprint(p)).toBe(fingerprint(server))
   })
@@ -198,7 +200,7 @@ describe('sync between phones, end to end over a fake server', () => {
         if (rand() < 0.5) net.push(i)
       }
       net.settle()
-      const server = fingerprint(readRemote(net.server.blob, 'trip1')!)
+      const server = fingerprint(readRemote(net.server.blob, 'trip-0001')!)
       for (const p of net.local) expect(fingerprint(p)).toBe(server)
     }
   })
@@ -215,7 +217,7 @@ describe('sync between phones, end to end over a fake server', () => {
     net.server.blob = blobOf(baseTrip(), 'intruder') // every expense gone
     net.settle()
 
-    const server = readRemote(net.server.blob, 'trip1')!
+    const server = readRemote(net.server.blob, 'trip-0001')!
     expect(Object.keys(server.expenses).sort()).toEqual(['a', 'b', 'c'])
   })
 
@@ -229,5 +231,65 @@ describe('sync between phones, end to end over a fake server', () => {
     const net = network([a, b])
     net.settle()
     expect(net.local[0]!.expenses.x!.description).toBe(net.local[1]!.expenses.x!.description)
+  })
+})
+
+describe('records other phones would reject (audit bug A)', () => {
+  // A cleared date picker used to save date "". The decoder rejects that, so
+  // the phone holding it could never match the server and wrote forever.
+  function withDatelessExpense(): Trip {
+    const t = baseTrip()
+    t.expenses.bad = makeExpense({ id: 'bad', date: '', paidBy: 'm1', updatedBy: 'dev0' })
+    t.expenses.good = makeExpense({ id: 'good', paidBy: 'm2', updatedBy: 'dev0' })
+    return t
+  }
+
+  it('settles instead of writing forever', () => {
+    const net = network([withDatelessExpense(), baseTrip()])
+    expect(net.settle()).toBeLessThan(5)
+    const writes = net.server.writes
+    for (let i = 0; i < 20; i += 1) net.settle()
+    expect(net.server.writes).toBe(writes)
+    expect(writes).toBeLessThanOrEqual(2)
+  })
+
+  it('still delivers the valid records, and never deletes the bad one from its phone', () => {
+    const net = network([withDatelessExpense(), baseTrip()])
+    net.settle()
+    expect(Object.keys(net.local[1]!.expenses)).toEqual(['good'])
+    expect(Object.keys(net.local[0]!.expenses).sort()).toEqual(['bad', 'good'])
+  })
+
+  it('settles when text is longer than other phones keep, whichever version wins', () => {
+    // Over-long text is cut on import. Depending on the characters, the full
+    // version can win the merge tie — which used to mean a write loop.
+    for (const tail of ['~~~', '   ', 'zzz', '!!!']) {
+      const t = baseTrip()
+      t.expenses.x = makeExpense({ id: 'x', description: 'a'.repeat(200) + tail, updatedBy: 'dev0' })
+      const net = network([t, baseTrip()])
+      expect(net.settle()).toBeLessThan(5)
+    }
+  })
+})
+
+describe('a server copy from a newer app version (audit bug F)', () => {
+  const newer = (t: Trip) => encodeLedger({ ...buildLedgerFile({ [t.id]: t }, 'future'), schema: 99 })
+
+  it('is never overwritten by this older version', () => {
+    expect(decidePush(baseTrip(), newer(baseTrip()), 'dev0')).toEqual({
+      action: 'refuse',
+      reason: 'newer-version',
+    })
+  })
+
+  it('is not adopted either, and says why', () => {
+    expect(decidePull(baseTrip(), newer(baseTrip()))).toEqual({
+      action: 'ignore',
+      reason: 'newer-version',
+    })
+  })
+
+  it('CONTROL: garbage on the server is still replaced, so a bad copy heals', () => {
+    expect(decidePush(baseTrip(), 'not a ledger', 'dev0').action).toBe('write')
   })
 })

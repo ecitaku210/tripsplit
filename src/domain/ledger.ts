@@ -11,6 +11,7 @@ import type {
 } from './types'
 import { SCHEMA_VERSION } from './types'
 import { isValidMinor } from './money'
+import { stableStringify } from './merge'
 
 /**
  * Import is the app's only untrusted input. A ledger file arrives over
@@ -39,6 +40,12 @@ export interface ParseResult {
 export interface ParseFailure {
   ok: false
   message: string
+  /**
+   * Set when the data is fine but written by a newer app version. Callers
+   * must treat that differently from garbage: garbage may be replaced, but
+   * newer data must never be overwritten by an older phone that cannot read it.
+   */
+  reason?: 'newer-version'
 }
 
 function str(v: unknown, max = 500): string | null {
@@ -65,6 +72,16 @@ function isoDate(v: unknown): string | null {
 }
 
 /**
+ * The one definition of a valid expense or repayment date, shared by the
+ * editor and the decoder. When the two disagreed, the editor saved a cleared
+ * date picker as "" — which every other phone then silently dropped, while
+ * the phone that saved it re-sent it forever.
+ */
+export function isIsoDate(v: unknown): v is string {
+  return isoDate(v) !== null
+}
+
+/**
  * Ids become object keys (`trip.expenses[id] = record`). A record whose id is
  * `__proto__` would therefore reassign the map's prototype instead of adding
  * an entry — the record silently disappears from `Object.values` while its
@@ -79,6 +96,16 @@ function id(v: unknown): Id | null {
   if (v.length < 1 || v.length > 64) return null
   if (UNSAFE_KEYS.has(v)) return null
   return /^[A-Za-z0-9_-]+$/.test(v) ? v : null
+}
+
+/**
+ * A trip id is also the Firestore document id, and the security rules accept
+ * only 8 to 64 characters. Accepting a shorter one here would import a trip
+ * that could never sync, failing with a permanent "Sync problem".
+ */
+function tripId(v: unknown): Id | null {
+  const t = id(v)
+  return t !== null && t.length >= 8 ? t : null
 }
 
 function ts(v: unknown): number | null {
@@ -200,7 +227,7 @@ function parseSettlement(v: unknown): Settlement | null {
 function parseTrip(v: unknown, warnings: string[]): Trip | null {
   if (typeof v !== 'object' || v === null) return null
   const o = v as Record<string, unknown>
-  const tid = id(o.id)
+  const tid = tripId(o.id)
   const name = str(o.name, 120)
   const currency = parseCurrency(o.currency)
   const createdAt = ts(o.createdAt)
@@ -268,6 +295,7 @@ export function parseLedger(raw: unknown): ParseResult | ParseFailure {
   if (schema > SCHEMA_VERSION) {
     return {
       ok: false,
+      reason: 'newer-version',
       message:
         `This ledger was written by a newer version of TripSplit (v${schema}). ` +
         `Update your app first — importing it now could lose data.`,
@@ -374,6 +402,19 @@ export function decodeLedger(code: string): ParseResult | ParseFailure {
   }
 }
 
+/**
+ * A trip exactly as another phone will read it: serialised, then validated by
+ * the same rules as any import. Records this app would reject are dropped and
+ * over-long text is cut, just as on the receiving end. Null if the trip itself
+ * would be rejected.
+ *
+ * Gzip is lossless, so this equals decoding the encoded ledger, minus the cost
+ * of compressing it.
+ */
+export function normaliseTrip(trip: Trip): Trip | null {
+  return parseTrip(JSON.parse(JSON.stringify(trip)), [])
+}
+
 export function buildLedgerFile(trips: Record<Id, Trip>, deviceId: Id): LedgerFile {
   return {
     kind: 'tripsplit.ledger',
@@ -382,4 +423,21 @@ export function buildLedgerFile(trips: Record<Id, Trip>, deviceId: Id): LedgerFi
     exportedBy: deviceId,
     trips,
   }
+}
+
+/**
+ * Live expenses on this phone that other phones will not receive as they are
+ * here: rejected by the import rules (such as a missing date, saved before the
+ * editor required one) or altered on the way. Sync cannot fix these by itself
+ * — the other phones would refuse them — so the trip screen asks a human to
+ * open and re-save them.
+ */
+export function unsyncableExpenses(trip: Trip): Expense[] {
+  const sent = normaliseTrip(trip)
+  if (!sent) return []
+  return Object.values(trip.expenses).filter((e) => {
+    if (e.deletedAt !== null) return false
+    const other = sent.expenses[e.id]
+    return !other || stableStringify(other) !== stableStringify(e)
+  })
 }
