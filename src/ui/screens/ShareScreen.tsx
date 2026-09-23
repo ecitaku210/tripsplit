@@ -116,7 +116,13 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
 
   return (
     <>
-      <TopBar title="Invite & share" subtitle={trip.name} onBack backTo={`/trip/${tripId}`} />
+      <TopBar
+        title="Invite & share"
+        subtitle="Bring someone onto this trip, or receive their copy"
+        onBack
+        backTo={`/trip/${tripId}`}
+        backLabel={trip.name}
+      />
       <div className="content no-fab">
         <div className="section">
           {key ? (

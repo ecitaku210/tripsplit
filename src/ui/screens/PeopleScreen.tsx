@@ -5,6 +5,7 @@ import { Avatar, Money, NotFound, TopBar } from '../components'
 import { Icon } from '../icons'
 import { reset } from '../router'
 import { useToast } from '../toast'
+import { countOf } from '../plural'
 import type { Id } from '../../domain/types'
 
 export function PeopleScreen({ tripId }: { tripId: Id }) {
@@ -42,7 +43,13 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
 
   return (
     <>
-      <TopBar title="People" subtitle={trip.name} onBack backTo={`/trip/${trip.id}`} />
+      <TopBar
+        title="People"
+        subtitle={countOf(members.length, 'person', 'people')}
+        onBack
+        backTo={`/trip/${trip.id}`}
+        backLabel={trip.name}
+      />
       <div className="content no-fab">
         <div className="section">
           <h2>On this trip</h2>

@@ -73,7 +73,7 @@ export function ImportScreen({ payload }: { payload: string | null }) {
 
   return (
     <>
-      <TopBar title="Import a trip" onBack />
+      <TopBar title="Import a trip" subtitle="Paste a code or open a file" onBack backTo="/" />
       <div className="content no-fab">
         <div className="section">
           <Alert tone="info">

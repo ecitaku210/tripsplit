@@ -47,7 +47,7 @@ export function HelpScreen() {
 
   return (
     <>
-      <TopBar title="Help & FAQ" subtitle="Everything in one place" onBack />
+      <TopBar title="Help & FAQ" subtitle="Everything in one place" onBack backTo="/" />
       <div className="content no-fab faq">
         <div className="section">
           <Alert tone="info">

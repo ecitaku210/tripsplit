@@ -4,11 +4,24 @@ import { formatMoney } from '../domain/money'
 import { back } from './router'
 import { Icon, type IconName } from './icons'
 
+/**
+ * Two headers, so the reader always knows where they are.
+ *
+ * HOME is the only screen with the app's mark and wordmark, and it wears
+ * the teal glow. It has no back arrow because there is nowhere back to go.
+ *
+ * Every SUB-SCREEN gets a compact sticky bar whose left side is a pill
+ * naming the screen it came from ("‹ Goa Trip"), then the screen's own
+ * title, large, in the page itself. The parent's name in the back pill is
+ * what makes the hierarchy legible: you see at once that "Settle up"
+ * belongs to Goa Trip, and that Goa Trip belongs to Trips.
+ */
 export function TopBar({
   title,
   subtitle,
   onBack,
   backTo,
+  backLabel,
   right,
   brand,
 }: {
@@ -17,30 +30,47 @@ export function TopBar({
   onBack?: boolean
   /** Where "back" lands when this screen was opened from a link or refresh. */
   backTo?: string
+  /** The parent screen's name, shown in the back pill. Defaults to "Trips". */
+  backLabel?: string
   right?: ReactNode
-  /** Show the app mark before the title (home screen only). */
+  /** The home variant: app mark and wordmark, no back. */
   brand?: boolean
 }) {
-  return (
-    <header className="topbar">
-      {onBack && (
-        <button className="btn ghost icon-only" onClick={() => back(backTo)} aria-label="Go back">
-          <Icon name="back" />
-        </button>
-      )}
-      {brand && (
+  if (brand) {
+    return (
+      <header className="topbar home">
         <span className="brand" aria-hidden="true">
           <span className="mark">
-            <Icon name="wallet" size={18} />
+            <Icon name="wallet" size={20} />
           </span>
         </span>
-      )}
-      <h1>
-        {title}
-        {subtitle && <span className="sub">{subtitle}</span>}
-      </h1>
-      {right}
-    </header>
+        <h1>
+          {title}
+          {subtitle && <span className="sub">{subtitle}</span>}
+        </h1>
+        {right}
+      </header>
+    )
+  }
+  return (
+    <>
+      <header className="topbar sub">
+        {onBack ? (
+          <button className="btn ghost backpill" onClick={() => back(backTo)} aria-label="Go back">
+            <Icon name="back" size={18} />
+            <span className="parent">{backLabel ?? 'Trips'}</span>
+          </button>
+        ) : (
+          <span className="grow" />
+        )}
+        <span className="grow" />
+        {right}
+      </header>
+      <div className="page-head">
+        <h1>{title}</h1>
+        {subtitle && <p className="sub">{subtitle}</p>}
+      </div>
+    </>
   )
 }
 
@@ -148,7 +178,7 @@ export function verdict(netMinor: Minor): { tone: 'pos' | 'neg' | 'zero'; label:
 export function NotFound({ what }: { what: 'trip' | 'expense' }) {
   return (
     <>
-      <TopBar title={what === 'trip' ? 'Trip not found' : 'Expense not found'} onBack />
+      <TopBar title={what === 'trip' ? 'Trip not found' : 'Expense not found'} onBack backTo="/" />
       <div className="content no-fab">
         <Empty icon="info" title={`That ${what} is not on this phone`}>
           It was deleted here, or it lives on someone else&apos;s phone and you have not imported

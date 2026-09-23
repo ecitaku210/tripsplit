@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { settlementPlan } from '../../domain/settle'
-import { formatMinor, parseAmount } from '../../domain/money'
+import { formatMinor, formatMoney, parseAmount } from '../../domain/money'
+import { amountInWords } from '../../domain/words'
 import { Alert, AvatarPair, Empty, Money, NotFound, TopBar, firstName } from '../components'
 import { Icon } from '../icons'
 import { back } from '../router'
@@ -35,7 +36,13 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
 
   return (
     <>
-      <TopBar title="Settle up" subtitle={trip.name} onBack backTo={`/trip/${tripId}`} />
+      <TopBar
+        title="Settle up"
+        subtitle="The fewest payments that make everyone square"
+        onBack
+        backTo={`/trip/${tripId}`}
+        backLabel={trip.name}
+      />
       <div className="content no-fab">
         {recorded.length > 0 && (
           <div className="section">
@@ -62,7 +69,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
           <>
             <div className="section">
               <div className="hero">
-                <p className="kicker">Settle up</p>
+                <p className="kicker">The plan</p>
                 <p className="headline zero">
                   {plan.length} payment{plan.length > 1 ? 's' : ''}
                 </p>
@@ -209,6 +216,13 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
       )}
       {amount.trim() !== '' && minor === null && (
         <div className="error">That is not an amount this currency can hold.</div>
+      )}
+      {minor !== null && minor > 0 && (
+        <p className="amount-words" aria-live="polite">
+          <span className="num">{formatMoney(minor, trip.currency)}</span>
+          {' · '}
+          {amountInWords(minor, trip.currency)}
+        </p>
       )}
       <div className="btn-row">
         <button className="btn ghost" onClick={() => setOpen(false)}>
