@@ -9,14 +9,17 @@ import { ShareScreen } from './screens/ShareScreen'
 import { PeopleScreen } from './screens/PeopleScreen'
 import { ImportScreen } from './screens/ImportScreen'
 import { HelpScreen } from './screens/HelpScreen'
+import { ToastProvider } from './toast'
 
 export function App() {
   return (
     <StoreProvider>
       <SyncProvider>
-        <div className="app">
-          <Routes />
-        </div>
+        <ToastProvider>
+          <div className="app">
+            <Routes />
+          </div>
+        </ToastProvider>
       </SyncProvider>
     </StoreProvider>
   )

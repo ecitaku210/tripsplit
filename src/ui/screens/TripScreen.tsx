@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useStore, useTrip } from '../../storage/store'
+import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
 import { computeSplit } from '../../domain/split'
 import { findProbableDuplicates, findProbableDuplicateSettlements } from '../../domain/merge'
@@ -22,6 +22,8 @@ import {
 } from '../components'
 import { Icon } from '../icons'
 import { navigate } from '../router'
+import { useToast } from '../toast'
+import { dayLabel } from '../dates'
 import type { Expense, Id, Trip } from '../../domain/types'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import type { SyncStatus } from '../../sync/engine'
@@ -300,9 +302,34 @@ function myLineOn(
   return { text: `you owe ${formatMoney(share, currency)}`, tone: 'neg' }
 }
 
+interface Day {
+  date: string
+  totalMinor: number
+  expenses: Expense[]
+}
+
+/** Consecutive expenses on the same date, in the order given. */
+function groupByDay(expenses: Expense[]): Day[] {
+  const days: Day[] = []
+  for (const e of expenses) {
+    const last = days[days.length - 1]
+    if (last && last.date === e.date) {
+      last.expenses.push(e)
+      last.totalMinor += e.amountMinor
+    } else {
+      days.push({ date: e.date, totalMinor: e.amountMinor, expenses: [e] })
+    }
+  }
+  return days
+}
+
 function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
-  const { deleteSettlement } = useStore()
+  const { deleteSettlement, restoreSettlement } = useStore()
+  const { show: toast } = useToast()
   const expenses = useMemo(() => liveExpenses(trip), [trip])
+  // liveExpenses is already newest-first by date, so grouping is one pass.
+  const days = useMemo(() => groupByDay(expenses), [expenses])
+  const today = todayISO()
   const settlements = useMemo(() => liveSettlements(trip), [trip])
   const nameOf = (id: Id) => trip.members[id]?.name ?? 'Someone (removed)'
   const shortName = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'Someone')
@@ -322,36 +349,49 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
         <div className="section">
           <div className="section-head">
             <h2>Expenses</h2>
-            <span className="aside">newest first</span>
+            <span className="aside">{countOf(expenses.length, 'entry', 'entries')}</span>
           </div>
-          <div className="card">
-            {expenses.map((e) => {
-              const payer = trip.members[e.paidBy]
-              const line = myLineOn(e, me, trip.currency)
-              return (
-                <button
-                  key={e.id}
-                  className="row"
-                  onClick={() => navigate(`/trip/${trip.id}/expense/${e.id}`)}
-                >
-                  {payer ? <Avatar member={payer} /> : <UnknownAvatar />}
-                  <div className="grow">
-                    <div className="title">
-                      {e.description || 'Expense'}
-                      {e.paidBy === me && <span className="chip tiny accent">you paid</span>}
-                    </div>
-                    <div className="meta">
-                      {shortDate(e.date)} · {shortName(e.paidBy)} paid
-                    </div>
-                  </div>
-                  <div className="amount">
-                    <Money amount={e.amountMinor} currency={trip.currency} />
-                    {line && <span className={`minor num ${line.tone}`}>{line.text}</span>}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+          {/*
+            One card per day, headed "Today" / "Yesterday" / "22 Sep", with
+            that day's total on the right. A flat list of forty rows reads as
+            a spreadsheet; days read as the trip.
+          */}
+          {days.map((day) => (
+            <div key={day.date} className="day">
+              <div className="day-head">
+                <span className={day.date ? '' : 'bad'}>{dayLabel(day.date, today)}</span>
+                <span className="num">{formatMoney(day.totalMinor, trip.currency)}</span>
+              </div>
+              <div className="card">
+                {day.expenses.map((e) => {
+                  const payer = trip.members[e.paidBy]
+                  const line = myLineOn(e, me, trip.currency)
+                  return (
+                    <button
+                      key={e.id}
+                      className="row"
+                      onClick={() => navigate(`/trip/${trip.id}/expense/${e.id}`)}
+                    >
+                      {payer ? <Avatar member={payer} /> : <UnknownAvatar />}
+                      <div className="grow">
+                        <div className="title">
+                          {e.description || 'Expense'}
+                          {e.paidBy === me && <span className="chip tiny accent">you paid</span>}
+                        </div>
+                        <div className="meta">
+                          {shortName(e.paidBy)} paid · {countOf(e.parts.length, 'person', 'people')}
+                        </div>
+                      </div>
+                      <div className="amount">
+                        <Money amount={e.amountMinor} currency={trip.currency} />
+                        {line && <span className={`minor num ${line.tone}`}>{line.text}</span>}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -377,26 +417,24 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                 </div>
                 <div className="amount">
                   <Money amount={s.amountMinor} currency={trip.currency} />
-                </div>
-                {/*
-                  Without this a mistaken or doubled Record tap was permanent:
-                  there was no way at all to take a repayment back.
-                */}
-                <button
-                  className="btn ghost icon-only"
-                  aria-label={`Delete repayment ${nameOf(s.fromMember)} to ${nameOf(s.toMember)}`}
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Delete this repayment?\n\n${nameOf(s.fromMember)} → ${nameOf(s.toMember)}\n\nOnly do this if it was recorded by mistake or twice. It is removed for everyone.`,
-                      )
-                    ) {
+                  {/*
+                    Without this a mistaken or doubled Record tap was permanent:
+                    there was no way at all to take a repayment back. It sits
+                    under the amount so the names keep the width they need.
+                  */}
+                  <button
+                    className="btn ghost icon-only"
+                    aria-label={`Delete repayment ${nameOf(s.fromMember)} to ${nameOf(s.toMember)}`}
+                    onClick={() => {
                       deleteSettlement(trip.id, s.id)
-                    }
-                  }}
-                >
-                  <Icon name="trash" size={18} />
-                </button>
+                      toast(`Deleted repayment ${shortName(s.fromMember)} → ${shortName(s.toMember)}`, {
+                        action: { label: 'Undo', onClick: () => restoreSettlement(trip.id, s.id) },
+                      })
+                    }}
+                  >
+                    <Icon name="trash" size={18} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -4,12 +4,23 @@ import { computeTotals, liveMembers } from '../../domain/balance'
 import { Avatar, Money, NotFound, TopBar } from '../components'
 import { Icon } from '../icons'
 import { navigate } from '../router'
+import { useToast } from '../toast'
 import type { Id } from '../../domain/types'
 
 export function PeopleScreen({ tripId }: { tripId: Id }) {
   const trip = useTrip(tripId)
-  const { db, addMember, renameMember, removeMember, setMyself, renameTrip, deleteTrip } =
-    useStore()
+  const {
+    db,
+    addMember,
+    renameMember,
+    removeMember,
+    restoreMember,
+    setMyself,
+    renameTrip,
+    deleteTrip,
+    restoreTrip,
+  } = useStore()
+  const { show: toast } = useToast()
   const [newName, setNewName] = useState('')
   const [editing, setEditing] = useState<Id | null>(null)
   const [editName, setEditName] = useState('')
@@ -89,17 +100,13 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
                         style={{ color: 'var(--negative)' }}
                         aria-label={`Remove ${m.name}`}
                         onClick={() => {
-                          const warning =
-                            net === 0
-                              ? ''
-                              : `\n\n${m.name} is not square yet, so their balance will stay on the books.`
-                          if (
-                            confirm(
-                              `Remove ${m.name} from this trip?\n\nExpenses they paid for or shared in stay exactly as they are — nothing is recalculated.${warning}`,
-                            )
-                          ) {
-                            removeMember(trip.id, m.id)
-                          }
+                          // Their past shares stay on the books either way
+                          // (see the hint below), so there is nothing to
+                          // warn about up front; Undo covers a slip.
+                          removeMember(trip.id, m.id)
+                          toast(`Removed ${m.name}`, {
+                            action: { label: 'Undo', onClick: () => restoreMember(trip.id, m.id) },
+                          })
                         }}
                       >
                         <Icon name="trash" size={18} />
@@ -190,14 +197,15 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
           <button
             className="btn danger block"
             onClick={() => {
-              if (
-                confirm(
-                  `Delete "${trip.name}" from this phone?\n\nIt is removed from this phone only and stops syncing here. Everyone else on the trip keeps it.`,
-                )
-              ) {
-                deleteTrip(trip.id)
-                navigate('/')
-              }
+              // Removed from this phone only; everyone else keeps it (deleted
+              // trips are never synced, see SyncProvider). Undo brings it
+              // back with everything that arrived in the meantime.
+              const id = trip.id
+              deleteTrip(id)
+              navigate('/')
+              toast(`Deleted ${trip.name} from this phone`, {
+                action: { label: 'Undo', onClick: () => restoreTrip(id) },
+              })
             }}
           >
             <Icon name="trash" size={18} />

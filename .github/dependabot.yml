@@ -1,0 +1,23 @@
+# Dependabot opens a pull request when a dependency has a fix available.
+# Alerts and security updates are switched on separately, in the repository's
+# Settings → Advanced Security; this file controls the routine version bumps.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # One PR for all minor and patch bumps, so a quiet week is one review, not
+    # ten. Majors still arrive one at a time, because they can break things.
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

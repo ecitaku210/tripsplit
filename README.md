@@ -131,6 +131,10 @@ was rounded down hardest, with ties broken on member id so **every phone
 computes byte-identical shares**. The result always sums to exactly the amount
 of the expense. That invariant is asserted over thousands of random cases.
 
+Formatting is done by hand, never with the device locale, so a ledger reads
+the same on every phone in the group. Rupee amounts use **Indian grouping**
+(`₹1,50,000`, not `₹150,000`); every other currency groups in thousands.
+
 ---
 
 ## Settling up
@@ -183,6 +187,18 @@ project; it grants nothing. What protects the data is `firestore.rules`, which:
 **The rules must be published in the Firebase console** (Firestore → Rules →
 paste the file → Publish). CI tests the copy in this repository; it cannot see
 what is live, so after changing the file, publish it again.
+
+The built `index.html` also carries a **Content Security Policy**: scripts run
+only from the app's own bundle, and the page may talk only to Firestore and
+Firebase Auth. Should a dependency ever be compromised or an injection slip
+through, the browser refuses to run or send anything else. The policy lives in
+`vite.config.ts`; a new network call has to be added there first or it fails
+in production.
+
+Deleting anything (an expense, a repayment, a person, a trip) shows an
+**Undo** for a few seconds instead of asking "are you sure?". A delete is a
+tombstone, so undo is just a newer version of the record with the tombstone
+cleared, and it wins the merge on every phone.
 
 ## Running it locally
 

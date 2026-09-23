@@ -53,6 +53,19 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/*
+ * iOS only: `-apple-system-body` is the system body text style, which
+ * follows the Text Size slider in Settings. Setting it on the root makes
+ * 1rem track that slider, so the app scales with the phone like a native
+ * one. Android and desktop browsers ignore the rule and use their own
+ * default size, which their text-size settings already control.
+ */
+@supports (font: -apple-system-body) {
+  html {
+    font: -apple-system-body;
+  }
+}
+
 html,
 body,
 #root {
@@ -65,7 +78,13 @@ body {
   color: var(--text);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
     sans-serif;
-  font-size: 16px;
+  /*
+   * No pixel size here: text is sized in rem throughout, so the root size
+   * the browser derives from the phone's text-size setting flows through.
+   * A person who set large text gets large text; the layout was checked at
+   * 125% and 150%.
+   */
+  font-size: 1rem;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   /* Stops iOS bouncing the whole page behind the fixed header. */
@@ -119,7 +138,7 @@ body {
   flex: 1;
   min-width: 0;
   margin: 0 4px;
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 650;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -129,7 +148,7 @@ body {
 
 .topbar .sub {
   display: block;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 450;
   color: var(--text-dim);
 }
@@ -183,7 +202,7 @@ body {
 .section-head > h2,
 .kicker {
   margin: 0 0 10px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -202,7 +221,7 @@ body {
 }
 
 .section-head .aside {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-faint);
 }
 
@@ -270,7 +289,7 @@ body {
 
 .row .meta {
   margin-top: 1px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -292,7 +311,7 @@ body {
 .row .amount .minor {
   display: block;
   margin-top: 1px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-faint);
 }
@@ -346,7 +365,7 @@ body {
 .trip-card .name {
   flex: 1;
   min-width: 0;
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 650;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -359,7 +378,7 @@ body {
   align-items: center;
   gap: 10px;
   margin-top: 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-dim);
 }
 
@@ -376,7 +395,7 @@ body {
 .trip-card .verdict {
   flex: 1;
   min-width: 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
 }
 
@@ -394,7 +413,7 @@ body {
 }
 
 .trip-card .spent {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-faint);
   white-space: nowrap;
 }
@@ -445,7 +464,7 @@ body {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.45);
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-dim);
 }
 
@@ -455,7 +474,7 @@ body {
 
 .hero .headline {
   margin: 10px 0 0;
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 750;
   letter-spacing: -0.025em;
   line-height: 1.1;
@@ -472,24 +491,25 @@ body {
 }
 .hero .headline.ask {
   color: var(--accent);
-  font-size: 24px;
+  font-size: 1.5rem;
 }
 
 .hero .lede {
   margin: 6px 0 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--text-dim);
 }
 
 .hero .foot {
   display: flex;
+  flex-wrap: wrap; /* at large text sizes "spent" drops to its own line */
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-dim);
 }
 
@@ -516,7 +536,7 @@ body {
   border-radius: 999px;
   border: 1px solid var(--line);
   background: rgba(0, 0, 0, 0.5);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 550;
   color: var(--text-dim);
   white-space: nowrap;
@@ -663,7 +683,7 @@ body {
 .btn.icon {
   min-height: 40px;
   padding: 0 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .btn.icon-only {
@@ -675,11 +695,14 @@ body {
 
 .btn-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
+/* Side by side while both fit on one line each; stacked when text is large. */
 .btn-row > * {
-  flex: 1;
+  flex: 1 1 150px;
+  white-space: nowrap;
 }
 
 /* Two-up action tiles: an icon, a title, a line saying what it does. */
@@ -726,13 +749,13 @@ body {
 }
 
 .tile .t-title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 650;
 }
 
 .tile .t-sub {
   margin-top: -6px;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.35;
   color: var(--text-dim);
 }
@@ -756,7 +779,7 @@ body {
   max-width: 528px;
   min-height: 54px;
   margin-inline: auto;
-  font-size: 17px;
+  font-size: 1.0625rem;
   box-shadow: 0 14px 34px -8px rgba(0, 0, 0, 0.6), var(--shadow-glow);
 }
 
@@ -769,7 +792,7 @@ body {
 .field > label {
   display: block;
   margin-bottom: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-dim);
 }
@@ -784,8 +807,9 @@ textarea {
   border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--text);
-  /* Under 16px iOS zooms the page on focus, which feels broken. */
-  font-size: 16px;
+  /* Under 16px iOS zooms the page on focus, which feels broken. 1rem is
+     16px at the default text size and larger above it, never smaller. */
+  font-size: max(1rem, 16px);
   font-family: inherit;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -818,7 +842,7 @@ textarea::placeholder {
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 600;
   color: var(--text-faint);
   pointer-events: none;
@@ -827,7 +851,7 @@ textarea::placeholder {
 input.amount-input {
   min-height: 68px;
   padding-left: 44px;
-  font-size: 34px;
+  font-size: 2.125rem;
   font-weight: 750;
   letter-spacing: -0.02em;
   text-align: right;
@@ -841,7 +865,7 @@ input.amount-input {
 
 .hint {
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--text-dim);
 }
@@ -858,7 +882,7 @@ input.amount-input {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.45;
   color: var(--text-dim);
 }
@@ -948,7 +972,7 @@ input.amount-input {
   background: none;
   color: var(--text-dim);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -997,7 +1021,7 @@ input.amount-input {
 
 .steps .s-body {
   margin-top: 1px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-dim);
 }
 
@@ -1015,7 +1039,7 @@ details.howto summary {
   padding: 13px 14px;
   list-style: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-dim);
 }
@@ -1036,7 +1060,7 @@ details.howto[open] summary .chev {
 
 details.howto .body {
   padding: 0 14px 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--text-dim);
 }
 
@@ -1065,6 +1089,92 @@ details.howto .body strong {
 
 .faq .body li + li {
   margin-top: 6px;
+}
+
+/* ---------- expense list, one card per day ---------- */
+
+.day + .day {
+  margin-top: 14px;
+}
+
+.day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 4px 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.day-head .num {
+  font-weight: 500;
+  color: var(--text-faint);
+}
+
+.day-head .bad {
+  color: var(--negative);
+}
+
+/* ---------- toast ---------- */
+
+/*
+ * Sits just above the "Add expense" button, inside the thumb's reach for
+ * Undo. Fixed, so it stays put while the list behind it changes.
+ */
+.toast-host {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--safe-bottom) + 84px);
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 528px;
+  padding: 12px 14px 12px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: 0 14px 34px -8px rgba(0, 0, 0, 0.75);
+  font-size: 0.9375rem;
+  font-weight: 550;
+  pointer-events: auto;
+  animation: toast-in 0.22s var(--ease);
+}
+
+.toast .msg {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast .act {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 
 /* ---------- misc ---------- */
@@ -1099,13 +1209,13 @@ details.howto .body strong {
 .empty h3 {
   margin: 0 0 6px;
   color: var(--text);
-  font-size: 17px;
+  font-size: 1.0625rem;
   letter-spacing: -0.01em;
 }
 
 .empty p {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.5;
 }
 
@@ -1116,7 +1226,7 @@ details.howto .body strong {
   padding: 3px 9px;
   border-radius: 999px;
   background: var(--surface-3);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 550;
   color: var(--text-dim);
 }
@@ -1124,7 +1234,7 @@ details.howto .body strong {
 .chip.tiny {
   margin-left: 6px;
   padding: 1px 7px;
-  font-size: 10px;
+  font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1172,7 +1282,7 @@ details.howto .body strong {
   flex: none;
   width: 72px;
   text-align: right;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-faint);
 }
 
@@ -1188,7 +1298,7 @@ details.howto .body strong {
   width: 100%;
   min-height: 110px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  font-size: 0.75rem;
   word-break: break-all;
 }
 

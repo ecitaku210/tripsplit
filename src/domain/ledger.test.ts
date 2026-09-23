@@ -66,6 +66,37 @@ describe('formatting', () => {
   it('puts the minus sign before the symbol, not after it', () => {
     expect(formatMoney(-1235, { code: 'INR', symbol: '₹', decimals: 2 })).toBe('-₹12.35')
   })
+
+  // Indian grouping: the last three digits, then pairs. Only the whole part
+  // is grouped; the paise stay a plain two digits.
+  it.each([
+    [100, '1.00'],
+    [99900, '999.00'],
+    [100000, '1,000.00'],
+    [9999900, '99,999.00'],
+    [10000000, '1,00,000.00'],
+    [15000000, '1,50,000.00'],
+    [123456789, '12,34,567.89'],
+    [1000000000, '1,00,00,000.00'],
+    [-15000000, '-1,50,000.00'],
+  ])('groups %i in lakhs as %s', (minor, expected) => {
+    expect(formatMinor(minor, 2, 'lakh')).toBe(expected)
+  })
+
+  it('groups INR in lakhs and every other currency in thousands', () => {
+    const inr = { code: 'INR', symbol: '₹', decimals: 2 }
+    const usd = { code: 'USD', symbol: '$', decimals: 2 }
+    const jpy = { code: 'JPY', symbol: '¥', decimals: 0 }
+    expect(formatMoney(15000000, inr)).toBe('₹1,50,000.00')
+    expect(formatMoney(15000000, usd)).toBe('$150,000.00')
+    expect(formatMoney(1234567, jpy)).toBe('¥1,234,567')
+  })
+
+  it('lakh grouping survives a parse round trip once the commas are stripped', () => {
+    for (const v of [7, 99999, 100000, 12345678, 1234567890]) {
+      expect(parseAmount(formatMinor(v, 2, 'lakh').replace(/,/g, ''), 2)).toBe(v)
+    }
+  })
 })
 
 describe('encode / decode round trip', () => {
