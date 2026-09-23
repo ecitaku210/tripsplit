@@ -8,6 +8,7 @@ import { SettleScreen } from './screens/SettleScreen'
 import { ShareScreen } from './screens/ShareScreen'
 import { PeopleScreen } from './screens/PeopleScreen'
 import { ImportScreen } from './screens/ImportScreen'
+import { HelpScreen } from './screens/HelpScreen'
 
 export function App() {
   return (
@@ -44,6 +45,8 @@ function Routes() {
       return <PeopleScreen tripId={route.tripId} />
     case 'import':
       return <ImportScreen payload={route.payload} />
+    case 'help':
+      return <HelpScreen />
     case 'home':
     default:
       return <HomeScreen />

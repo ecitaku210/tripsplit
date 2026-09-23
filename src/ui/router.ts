@@ -17,6 +17,7 @@ export type Route =
   | { name: 'share'; tripId: string }
   | { name: 'people'; tripId: string }
   | { name: 'import'; payload: string | null }
+  | { name: 'help' }
 
 export function parseHash(hash: string): Route {
   const raw = hash.replace(/^#/, '')
@@ -25,6 +26,7 @@ export function parseHash(hash: string): Route {
   const query = new URLSearchParams(queryPart)
 
   if (segments[0] === 'import') return { name: 'import', payload: query.get('d') }
+  if (segments[0] === 'help') return { name: 'help' }
 
   if (segments[0] === 'trip' && segments[1]) {
     const tripId = decodeURIComponent(segments[1])

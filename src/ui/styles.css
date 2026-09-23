@@ -703,6 +703,10 @@ body {
   border-color: var(--line-strong);
 }
 
+.tile.wide {
+  width: 100%;
+}
+
 .tile .ic {
   display: grid;
   place-items: center;
@@ -1034,6 +1038,25 @@ details.howto .body p {
 
 details.howto .body strong {
   color: var(--text);
+}
+
+/* ---------- help & FAQ ---------- */
+
+.faq details.howto + details.howto {
+  margin-top: 8px;
+}
+
+.faq details.howto summary {
+  color: var(--text);
+}
+
+.faq .body ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+
+.faq .body li + li {
+  margin-top: 6px;
 }
 
 /* ---------- misc ---------- */
