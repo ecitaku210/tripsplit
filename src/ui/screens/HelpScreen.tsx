@@ -160,7 +160,9 @@ export function HelpScreen() {
               goes up when signal returns. <strong>Sync problem</strong>: the app keeps retrying by
               itself. <strong>Update needed</strong>: close the app fully and open it again.{' '}
               <strong>Locked</strong>: the trip is encrypted and this phone lacks the key; ask
-              someone on the trip for the code again and import it.
+              someone on the trip for the code again and import it. <strong>Daily limit</strong>:
+              the free sync allowance for the day is used up; everything is saved on the phone and
+              syncs again after the daily reset.
             </p>
           </Q>
           <Q q="Does it sync when the app is closed?">

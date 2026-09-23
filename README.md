@@ -221,6 +221,43 @@ Deleting anything (an expense, a repayment, a person, a trip) shows an
 tombstone, so undo is just a newer version of the record with the tombstone
 cleared, and it wins the merge on every phone.
 
+## Staying inside the free tier
+
+Firebase's Spark plan allows 50,000 document reads and 20,000 writes a day,
+1 GiB of storage and 10 GiB a month of outbound traffic, and there is no
+card on file, so the worst case is sync pausing until the daily reset, never
+a bill. Measured against the emulator with five phones logging 40 expenses
+in a day and reopening the app 30 times:
+
+| Event | Reads | Writes |
+|---|---|---|
+| Five phones opening the trip | 14 | 1 |
+| 40 expenses, each reaching all five phones | 240 | 40 |
+| 30 reopenings with nothing new to send | 0 | 0 |
+
+About 250 reads and 41 writes: half a percent of the daily allowance. Each
+write costs one transaction read plus one snapshot per listening phone, and
+a reopen costs nothing because the pre-check compares against the last known
+server copy without touching the network.
+
+What keeps it that way:
+
+- **No write loops.** A write only happens when the normalised content
+  differs from the server's; the protocol tests assert that phones go quiet.
+- **Slowing retries.** A failure retries at 2, 4, 8, 16, 30 seconds, then
+  once every five minutes (`src/sync/backoff.ts`), so a phone stuck on an
+  error costs under 300 reads a day rather than nearly 3,000. Reopening the
+  app or regaining the network retries at once.
+- **Quota exhaustion is recognised.** A `resource-exhausted` error shows the
+  **Daily limit** badge and stops retrying by timer until the app resumes.
+- **One document per trip**, so the number of documents equals the number of
+  trips, not expenses.
+
+The exposure that remains is abuse: the web config is public, so a script
+could sign in anonymously and write junk documents under random ids until
+the day's writes or the storage are used up. Firebase App Check is the fix
+and needs a reCAPTCHA site key registered in the console.
+
 ## Running it locally
 
 Needs **Node 22.12 or newer** (Vitest 5 sets that floor; it is enforced by

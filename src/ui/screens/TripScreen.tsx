@@ -63,6 +63,11 @@ const SYNC: Record<
     tone: 'bad',
     note: 'This trip is encrypted with a key this phone does not have. Ask someone on the trip to share it again, then import that code.',
   },
+  quota: {
+    label: 'Daily limit',
+    tone: 'warn',
+    note: 'The free daily sync limit is used up. Saved on this phone; syncing resumes after the reset at 12:30 pm IST.',
+  },
   error: {
     label: 'Sync problem',
     tone: 'bad',
