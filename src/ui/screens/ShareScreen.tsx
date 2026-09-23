@@ -4,7 +4,7 @@ import { buildLedgerFile, decodeLedger, encodeLedger, parseLedger } from '../../
 import { liveExpenses } from '../../domain/balance'
 import { Alert, NotFound, TopBar } from '../components'
 import { Icon } from '../icons'
-import { navigate } from '../router'
+import { back } from '../router'
 import type { Id } from '../../domain/types'
 import type { MergeSummary } from '../../domain/merge'
 
@@ -108,7 +108,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
 
   return (
     <>
-      <TopBar title="Invite & share" subtitle={trip.name} onBack />
+      <TopBar title="Invite & share" subtitle={trip.name} onBack backTo={`/trip/${tripId}`} />
       <div className="content no-fab">
         <div className="section">
           <div className="section-head">
@@ -189,7 +189,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
           </div>
         )}
 
-        <button className="btn block ghost" onClick={() => navigate(`/trip/${tripId}`)}>
+        <button className="btn block ghost" onClick={() => back(`/trip/${tripId}`)}>
           Back to trip
         </button>
       </div>

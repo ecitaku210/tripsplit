@@ -62,17 +62,73 @@ export function useRoute(): Route {
   return route
 }
 
+/**
+ * Navigation and the back button.
+ *
+ * Every in-app push records how deep into the app the person is
+ * (`history.state.depth`). That number is what makes "back" honest: a screen
+ * that has finished its job (an expense saved or deleted) goes BACK to where
+ * the person came from instead of pushing a new entry on top. Pushing left the
+ * finished screen in history, so the phone's back button returned to an editor
+ * for an expense that no longer existed, with an Undo toast still on screen.
+ *
+ * A screen opened from a link or a refresh has depth 0 and no in-app history
+ * behind it, so "back" REPLACES the entry with the natural parent instead of
+ * leaving the app.
+ */
+function depth(): number {
+  const state = window.history.state as { depth?: number } | null
+  return state?.depth ?? 0
+}
+
+function urlFor(to: string): string {
+  return `${window.location.pathname}${window.location.search}#${to}`
+}
+
+function announce(): void {
+  // pushState/replaceState never fire hashchange; useRoute listens for it.
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+}
+
+/** Go forward to a new screen. */
 export function navigate(to: string): void {
-  window.location.hash = to
+  if (window.location.hash.replace(/^#/, '') === to) return
+  window.history.pushState({ depth: depth() + 1 }, '', urlFor(to))
+  announce()
 }
 
 /** Replaces the entry so the back button does not return to a consumed link. */
 export function replace(to: string): void {
-  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${to}`)
-  window.dispatchEvent(new HashChangeEvent('hashchange'))
+  window.history.replaceState({ depth: depth() }, '', urlFor(to))
+  announce()
 }
 
-export function back(): void {
-  if (window.history.length > 1) window.history.back()
-  else navigate('/')
+/**
+ * Leave the current screen. Returns to the previous in-app screen when there
+ * is one; otherwise (opened from a link, or after a refresh) shows `fallback`
+ * in its place.
+ */
+export function back(fallback = '/'): void {
+  if (depth() > 0) window.history.back()
+  else replace(fallback)
+}
+
+/**
+ * Drop every in-app entry and land on `to`, for when the thing the history
+ * was about no longer exists (a deleted trip). Going back from there leaves
+ * the app, as it should, instead of stepping through screens of a trip that
+ * is gone.
+ */
+export function reset(to: string): void {
+  const d = depth()
+  if (d === 0) {
+    replace(to)
+    return
+  }
+  const onArrive = () => {
+    window.removeEventListener('popstate', onArrive)
+    if (window.location.hash.replace(/^#/, '') !== to) replace(to)
+  }
+  window.addEventListener('popstate', onArrive)
+  window.history.go(-d)
 }
