@@ -8,6 +8,7 @@ import { navigate } from '../router'
 import type { Id, Trip } from '../../domain/types'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import type { SyncStatus } from '../../sync/engine'
+import { countOf } from '../plural'
 
 /**
  * Worded for someone standing at a till, not for a developer. The two
@@ -32,7 +33,7 @@ export function TripScreen({ tripId }: { tripId: Id }) {
   const sync = useSyncStatus(tripId)
 
   if (!trip) return <NotFound what="trip" />
-  const people = `${liveMembers(trip).length} people`
+  const people = countOf(liveMembers(trip).length, 'person', 'people')
 
   return (
     <>
@@ -154,8 +155,9 @@ function Warnings({ trip }: { trip: Trip }) {
       )}
       {totals.problems.length > 0 && (
         <div className="error">
-          {totals.problems.length} expense(s) could not be added up and are being left out of every
-          balance. Open and re-save them to fix.
+          {countOf(totals.problems.length, 'expense', 'expenses')} could not be added up and{' '}
+          {totals.problems.length === 1 ? 'is' : 'are'} being left out of every balance. Open and
+          re-save {totals.problems.length === 1 ? 'it' : 'them'} to fix.
         </div>
       )}
       {duplicates.length > 0 && (

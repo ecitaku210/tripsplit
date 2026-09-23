@@ -5,6 +5,7 @@ import { DEFAULT_CURRENCIES } from '../../domain/money'
 import { Empty, Field, Money, TopBar } from '../components'
 import { navigate } from '../router'
 import type { Currency } from '../../domain/types'
+import { countOf } from '../plural'
 
 export function HomeScreen() {
   const { db, createTrip, usage, saveError } = useStore()
@@ -64,7 +65,8 @@ export function HomeScreen() {
                     <div className="grow">
                       <div className="title">{trip.name}</div>
                       <div className="meta">
-                        {liveMembers(trip).length} people · {liveExpenses(trip).length} expenses
+                        {countOf(liveMembers(trip).length, 'person', 'people')} ·{' '}
+                        {countOf(liveExpenses(trip).length, 'expense', 'expenses')}
                       </div>
                     </div>
                     <div className="amount">
