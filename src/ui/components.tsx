@@ -152,7 +152,7 @@ export function Segmented<T extends string>({
 /** `2026-01-04` -> `4 Jan`. Short because it sits in a dense list. */
 export function shortDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number)
-  if (!y || !m || !d) return iso
+  if (!y || !m || !d) return iso || 'No date'
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   return `${d} ${months[m - 1]}`
 }

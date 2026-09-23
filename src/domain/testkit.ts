@@ -22,7 +22,7 @@ export function makeMember(id: Id, name: string, at = 1000, by = 'devA'): Member
   return { id, name, updatedAt: at, updatedBy: by, deletedAt: null }
 }
 
-export function makeTrip(id = 'trip1', members: Member[] = []): Trip {
+export function makeTrip(id = 'trip-0001', members: Member[] = []): Trip {
   return {
     id,
     name: 'Test Trip',
@@ -80,7 +80,7 @@ export function randomTrip(seed: number, memberCount = 5, expenseCount = 40): Tr
   const members = Array.from({ length: memberCount }, (_, i) =>
     makeMember(`m${i}`, `Member ${i}`),
   )
-  const trip = makeTrip('trip1', members)
+  const trip = makeTrip('trip-0001', members)
   const ids = members.map((m) => m.id)
 
   for (let i = 0; i < expenseCount; i += 1) {

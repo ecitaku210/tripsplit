@@ -82,12 +82,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     seen.current = next
   }, [engine, trips])
 
-  // Back online: push anything that piled up while offline.
+  // Back online, or back on screen: push anything that piled up. Phones
+  // freeze a backgrounded app's timers, so returning to it is the moment a
+  // pending retry would otherwise be waiting on a timer that never ran.
   useEffect(() => {
     if (!engine) return
     const onOnline = () => engine.resume()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') engine.resume()
+    }
     window.addEventListener('online', onOnline)
-    return () => window.removeEventListener('online', onOnline)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('online', onOnline)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [engine])
 
   return <SyncContext.Provider value={statuses}>{children}</SyncContext.Provider>

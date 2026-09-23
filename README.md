@@ -26,7 +26,10 @@ press.
 
 With no signal the app keeps working normally. Changes are saved on the phone,
 the trip screen says **Offline · saved on this phone**, and everything goes up
-by itself when signal returns.
+by itself when signal returns. A failed upload, sign-in or listener retries on
+its own (every 2 s, backing off to every 30 s), so one bar of signal or a
+captive hotel Wi-Fi recovers without anyone reopening the app. The app only
+syncs while it is open: phones do not let a web app run in the background.
 
 Two things follow from that, and your group should know them:
 
@@ -84,6 +87,16 @@ fires every listener, including the writer's own, and a phone that re-wrote on
 every snapshot would loop forever at a cost per write. `src/sync/protocol.ts`
 decides every write by comparing full content, and holds no Firebase code, so
 all of it is tested without a network.
+
+It compares what the server would **end up holding**, not what the phone
+holds. Other phones read every copy through the import validator, which drops
+records it rejects. A phone holding such a record — an expense saved with a
+cleared date, before the editor required one — could otherwise never match the
+server and would write the same copy forever, using up the group's daily
+quota. The trip screen flags such an expense so a person can fix it.
+
+A server copy written by a **newer** app version is never overwritten by an
+older one: the trip says **Update needed** instead.
 
 **Why tombstones?** If deleting an expense actually removed the record, then
 merging with a friend whose copy still had it would silently bring it back.

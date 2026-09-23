@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
-import { findProbableDuplicates } from '../../domain/merge'
+import { findProbableDuplicates, findProbableDuplicateSettlements } from '../../domain/merge'
+import { unsyncableExpenses } from '../../domain/ledger'
 import { Avatar, Empty, Money, NotFound, Segmented, TopBar, shortDate } from '../components'
 import { navigate } from '../router'
 import type { Id, Trip } from '../../domain/types'
@@ -19,6 +20,7 @@ const SYNC_LABEL: Record<SyncStatus, string> = {
   saving: 'Saving…',
   offline: 'Offline · saved on this phone',
   'too-large': 'Too big to sync live · use Share',
+  outdated: 'Update needed · close and reopen the app',
   error: 'Sync problem · saved on this phone',
 }
 
@@ -118,11 +120,38 @@ function IdentityPrompt({ trip }: { trip: Trip }) {
 function Warnings({ trip }: { trip: Trip }) {
   const totals = useMemo(() => computeTotals(trip), [trip])
   const duplicates = useMemo(() => findProbableDuplicates(trip), [trip])
+  const doubledRepayments = useMemo(() => findProbableDuplicateSettlements(trip), [trip])
+  const unsyncable = useMemo(() => unsyncableExpenses(trip), [trip])
 
-  if (totals.problems.length === 0 && duplicates.length === 0) return null
+  if (
+    totals.problems.length === 0 &&
+    duplicates.length === 0 &&
+    doubledRepayments.length === 0 &&
+    unsyncable.length === 0
+  ) {
+    return null
+  }
 
   return (
     <div className="section">
+      {unsyncable.length > 0 && (
+        <div className="error">
+          <strong>
+            {unsyncable.length === 1
+              ? '1 expense is not reaching anyone else’s phone'
+              : `${unsyncable.length} expenses are not reaching anyone else’s phone`}
+          </strong>
+          , so balances differ between phones. Usually it has no date — look for{' '}
+          <strong>No date</strong> in the list. Open it, pick a date and save.
+        </div>
+      )}
+      {doubledRepayments.length > 0 && (
+        <div className="notice">
+          <strong>Possible double repayment.</strong> The same repayment was recorded on two
+          phones, so it counts twice. If it was only paid once, delete one of them under{' '}
+          <strong>Repayments</strong>.
+        </div>
+      )}
       {totals.problems.length > 0 && (
         <div className="error">
           {totals.problems.length} expense(s) could not be added up and are being left out of every
@@ -144,6 +173,7 @@ function Warnings({ trip }: { trip: Trip }) {
 }
 
 function ExpensesTab({ trip }: { trip: Trip }) {
+  const { deleteSettlement } = useStore()
   const expenses = useMemo(() => liveExpenses(trip), [trip])
   const settlements = useMemo(() => liveSettlements(trip), [trip])
   const totals = useMemo(() => computeTotals(trip), [trip])
@@ -219,6 +249,25 @@ function ExpensesTab({ trip }: { trip: Trip }) {
                 <div className="amount">
                   <Money amount={s.amountMinor} currency={trip.currency} />
                 </div>
+                {/*
+                  Without this a mistaken or doubled Record tap was permanent:
+                  there was no way at all to take a repayment back.
+                */}
+                <button
+                  className="btn icon danger"
+                  aria-label={`Delete repayment ${nameOf(s.fromMember)} to ${nameOf(s.toMember)}`}
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Delete this repayment?\n\n${nameOf(s.fromMember)} → ${nameOf(s.toMember)}\n\nOnly do this if it was recorded by mistake or twice. It is removed for everyone.`,
+                      )
+                    ) {
+                      deleteSettlement(trip.id, s.id)
+                    }
+                  }}
+                >
+                  Delete
+                </button>
               </div>
             ))}
           </div>

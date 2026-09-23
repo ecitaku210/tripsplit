@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { findProbableDuplicates, mergeTrip, summariseMerge } from './merge'
+import {
+  findProbableDuplicates,
+  findProbableDuplicateSettlements,
+  mergeTrip,
+  mergeTripMaps,
+  restoreDeletedTrips,
+  summariseMerge,
+} from './merge'
 import { computeTotals } from './balance'
-import { makeExpense, makeMember, makeTrip, randomTrip, rng } from './testkit'
+import { makeExpense, makeMember, makeSettlement, makeTrip, randomTrip, rng } from './testkit'
 import type { Trip } from './types'
 
 /** Canonical form, so two structurally equal trips compare equal. */
@@ -183,5 +190,55 @@ describe('summariseMerge', () => {
     const after = { t: makeTrip('t', [makeMember('m1', 'Asha')]) }
     after.t.expenses.e1 = makeExpense({ id: 'e1' })
     expect(summariseMerge({}, after)).toMatchObject({ tripsAdded: 1, expensesAdded: 1 })
+  })
+})
+
+describe('audit fixes', () => {
+  const trip = () => makeTrip('trip-0001', [makeMember('m1', 'Asha'), makeMember('m2', 'Bilal')])
+  const pay = (id: string, by: string, amountMinor = 500) =>
+    makeSettlement({ id, fromMember: 'm2', toMember: 'm1', amountMinor, date: '2026-09-23', updatedBy: by })
+
+  it('E: flags one repayment recorded on two phones', () => {
+    const t = trip()
+    t.settlements.a = pay('a', 'devA')
+    t.settlements.b = pay('b', 'devB')
+    expect(findProbableDuplicateSettlements(t)).toHaveLength(1)
+  })
+
+  it('E CONTROL: two repayments from one phone are deliberate, not flagged', () => {
+    const t = trip()
+    t.settlements.a = pay('a', 'devA')
+    t.settlements.b = pay('b', 'devA')
+    expect(findProbableDuplicateSettlements(t)).toHaveLength(0)
+  })
+
+  it('E CONTROL: different amounts are not flagged, and nor is a deleted copy', () => {
+    const t = trip()
+    t.settlements.a = pay('a', 'devA')
+    t.settlements.b = pay('b', 'devB', 400)
+    t.settlements.c = { ...pay('c', 'devC'), deletedAt: 9 }
+    expect(findProbableDuplicateSettlements(t)).toHaveLength(0)
+  })
+
+  it('D: an import the person starts brings back a trip deleted on this phone', () => {
+    const remote = trip()
+    remote.expenses.e1 = makeExpense({ id: 'e1' })
+    const mine = { ...trip(), deletedAt: 99_999, updatedAt: 99_999 }
+    const merged = mergeTripMaps(restoreDeletedTrips({ [mine.id]: mine }, { [remote.id]: remote }), {
+      [remote.id]: remote,
+    })
+    expect(merged[remote.id]!.deletedAt).toBeNull()
+    expect(merged[remote.id]!.expenses.e1).toBeDefined()
+  })
+
+  it('D CONTROL: a plain merge, as sync does, keeps it deleted', () => {
+    const remote = trip()
+    const mine = { ...trip(), deletedAt: 99_999, updatedAt: 99_999 }
+    expect(mergeTrip(mine, remote).deletedAt).not.toBeNull()
+  })
+
+  it('D CONTROL: leaves trips that were never deleted exactly as they were', () => {
+    const local = { [trip().id]: trip() }
+    expect(restoreDeletedTrips(local, { [trip().id]: trip() })).toBe(local)
   })
 })

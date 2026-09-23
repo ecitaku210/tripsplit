@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createSync, type SyncEngine, type SyncStatus } from '../../src/sync/engine'
 import { mergeTrip } from '../../src/domain/merge'
@@ -166,6 +167,84 @@ describe('live sync through the Firestore emulator', () => {
     const b = phone('b', freshTripWithId(base.id))
     b.engine.watch(base.id)
     await waitFor('B to receive the pre-existing expense', () => !!b.trips.get(base.id)!.expenses.old)
+  })
+})
+
+describe('recovering by itself (audit bugs A and C)', () => {
+  /** Swap the emulator's security rules in place, as the rules test kit does. */
+  async function setRules(content: string) {
+    const r = await fetch(
+      `http://${EMU.host}:${EMU.firestorePort}/emulator/v1/projects/${CONFIG.projectId}:securityRules`,
+      { method: 'PUT', body: JSON.stringify({ rules: { files: [{ name: 'firestore.rules', content }] } }) },
+    )
+    if (!r.ok) throw new Error(`could not load rules: ${r.status}`)
+  }
+  const realRules = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8')
+  const denyAll = "rules_version = '2';\nservice cloud.firestore { match /databases/{db}/documents { match /{d=**} { allow read, write: if false; } } }"
+  const readOnly = "rules_version = '2';\nservice cloud.firestore { match /databases/{db}/documents { match /{d=**} { allow read: if request.auth != null; allow write: if false; } } }"
+  afterEach(() => setRules(realRules))
+
+  it('retries a failed upload by itself, with no further edits', async () => {
+    const base = freshTrip()
+    const a = phone('a', base)
+    const b = phone('b', base)
+    a.engine.watch(base.id)
+    b.engine.watch(base.id)
+    await waitFor('both connected', () => a.statuses.includes('live') && b.statuses.includes('live'))
+
+    // Writes fail, reads still work: the listeners stay healthy, so nothing
+    // arrives to prompt a retry. Only the retry itself can deliver this.
+    await setRules(readOnly)
+    a.edit(base.id, (t) => {
+      t.expenses.late = makeExpense({ id: 'late', updatedBy: 'dev-a', updatedAt: Date.now() })
+    })
+    await waitFor('A to report the failure', () => a.statuses.at(-1) === 'error')
+    await sleep(500)
+    expect(b.trips.get(base.id)!.expenses.late).toBeUndefined()
+
+    // The server recovers. Nobody touches either phone again.
+    await setRules(realRules)
+    await waitFor('B to receive it without any further edit', () => !!b.trips.get(base.id)!.expenses.late, 20_000)
+  }, 40_000)
+
+  it('re-attaches a listener the server ended, so later expenses still arrive', async () => {
+    const base = freshTrip()
+    const a = phone('a', base)
+    a.engine.watch(base.id)
+    await waitFor('A connected', () => a.statuses.includes('live'))
+
+    // Changing the rules does not end a listener that is already running, so
+    // B starts listening while the server refuses. Its listener is ended for
+    // good by Firestore, and only re-attaching it can bring B back.
+    await setRules(denyAll)
+    const b = phone('b', base)
+    b.engine.watch(base.id)
+    await waitFor("B's listener to be refused", () => b.statuses.at(-1) === 'error')
+    await setRules(realRules)
+
+    a.edit(base.id, (t) => {
+      t.expenses.after = makeExpense({ id: 'after', updatedBy: 'dev-a', updatedAt: Date.now() })
+    })
+    await waitFor('B to receive a later expense', () => !!b.trips.get(base.id)!.expenses.after, 20_000)
+  }, 40_000)
+
+  it('does not loop on an expense other phones reject, and still delivers the rest', async () => {
+    const base = freshTrip()
+    const a = phone('a', base)
+    const b = phone('b', base)
+    a.engine.watch(base.id)
+    b.engine.watch(base.id)
+    a.edit(base.id, (t) => {
+      t.expenses.dateless = makeExpense({ id: 'dateless', date: '', updatedBy: 'dev-a', updatedAt: Date.now() })
+      t.expenses.fine = makeExpense({ id: 'fine', updatedBy: 'dev-a', updatedAt: Date.now() })
+    })
+    await waitFor('B to get the valid expense', () => !!b.trips.get(base.id)!.expenses.fine)
+    await sleep(800)
+    const before = a.engine.stats().writes
+    await sleep(2000)
+    expect(a.engine.stats().writes).toBe(before)
+    expect(before).toBeLessThanOrEqual(2)
+    expect(b.trips.get(base.id)!.expenses.dateless).toBeUndefined()
   })
 })
 

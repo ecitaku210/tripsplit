@@ -80,7 +80,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
       setResult({ ok: false, message: decoded.message })
       return
     }
-    const summary = importTrips(decoded.file.trips)
+    const summary = importTrips(decoded.file.trips, { restoreDeleted: true })
     setResult({
       ok: true,
       message: describe(summary) + (decoded.warnings.length ? ` ${decoded.warnings.join(' ')}` : ''),
@@ -95,7 +95,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
         setResult({ ok: false, message: parsed.message })
         return
       }
-      const summary = importTrips(parsed.file.trips)
+      const summary = importTrips(parsed.file.trips, { restoreDeleted: true })
       setResult({
         ok: true,
         message: describe(summary) + (parsed.warnings.length ? ` ${parsed.warnings.join(' ')}` : ''),

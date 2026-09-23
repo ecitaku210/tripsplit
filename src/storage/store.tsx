@@ -18,7 +18,13 @@ import type {
   SplitPart,
   Trip,
 } from '../domain/types'
-import { mergeTripMaps, summariseMerge, type MergeSummary } from '../domain/merge'
+import {
+  liveTrips,
+  mergeTripMaps,
+  restoreDeletedTrips,
+  summariseMerge,
+  type MergeSummary,
+} from '../domain/merge'
 import { loadDatabase, newId, saveDatabase, storageUsage, type StorageUsage } from './db'
 
 /**
@@ -51,7 +57,11 @@ interface StoreValue {
   addSettlement(tripId: Id, s: SettlementDraft): void
   deleteSettlement(tripId: Id, settlementId: Id): void
 
-  importTrips(trips: Record<Id, Trip>): MergeSummary
+  /**
+   * Merge trips in. `restoreDeleted` is for imports a person starts: it
+   * brings back a trip they had deleted on this phone. Sync never sets it.
+   */
+  importTrips(trips: Record<Id, Trip>, opts?: { restoreDeleted?: boolean }): MergeSummary
 }
 
 export interface ExpenseDraft {
@@ -267,17 +277,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
       },
 
-      importTrips(incoming) {
+      importTrips(incoming, { restoreDeleted = false } = {}) {
+        const prepare = (trips: Record<Id, Trip>) =>
+          restoreDeleted ? restoreDeletedTrips(trips, incoming) : trips
         // Merged once and reused for both the summary and the new state.
         // Merging twice was pure waste on a large ledger, and under
         // StrictMode's double-invoked updater it ran three times.
-        const merged = mergeTripMaps(db.trips, incoming)
-        const summary = summariseMerge(db.trips, merged)
+        const merged = mergeTripMaps(prepare(db.trips), incoming)
+        // Counted over visible trips, so a restored trip reads as the new
+        // trip it is to the person who sees it reappear.
+        const summary = summariseMerge(liveTrips(db.trips), liveTrips(merged))
         setDb((prev) => ({
           ...prev,
           // If another change landed between render and commit, redo the
           // merge against what is actually current rather than clobbering it.
-          trips: prev.trips === db.trips ? merged : mergeTripMaps(prev.trips, incoming),
+          trips:
+            prev.trips === db.trips ? merged : mergeTripMaps(prepare(prev.trips), incoming),
         }))
         return summary
       },

@@ -1,4 +1,4 @@
-import type { Expense, Id, Trip, Versioned } from './types'
+import type { Expense, Id, Settlement, Trip, Versioned } from './types'
 
 /**
  * Merging replicas.
@@ -41,7 +41,7 @@ function pickWinner<T extends Versioned>(a: T, b: T): T {
 }
 
 /** JSON with sorted keys, so two equal objects always serialise identically. */
-function stableStringify(value: unknown): string {
+export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
   const obj = value as Record<string, unknown>
@@ -89,6 +89,45 @@ export function mergeTripMaps(
     else out[id] = (left ?? right)!
   }
   return out
+}
+
+/**
+ * Undo this phone's own deletion of any trip the user is importing again.
+ *
+ * Deleting a trip is a tombstone stamped "now", so in a plain merge it beats
+ * the older trip being imported: the import reported success and the trip
+ * stayed invisible, with no way back. An import the user starts is a clear
+ * request for the trip, so the tombstone is replaced by the incoming trip's
+ * own details. That is safe because a deleted trip is never synced — the
+ * tombstone only ever existed on this phone.
+ *
+ * Only for imports a person asks for. Background sync must not call this, or
+ * a trip deleted a moment ago would reappear by itself.
+ */
+export function restoreDeletedTrips(
+  local: Record<Id, Trip>,
+  incoming: Record<Id, Trip>,
+): Record<Id, Trip> {
+  let out = local
+  for (const [id, inc] of Object.entries(incoming)) {
+    const mine = local[id]
+    if (!mine || mine.deletedAt === null || inc.deletedAt !== null) continue
+    if (out === local) out = { ...local }
+    out[id] = {
+      ...mine,
+      name: inc.name,
+      currency: inc.currency,
+      updatedAt: inc.updatedAt,
+      updatedBy: inc.updatedBy,
+      deletedAt: null,
+    }
+  }
+  return out
+}
+
+/** Trips not deleted on this phone. */
+export function liveTrips(trips: Record<Id, Trip>): Record<Id, Trip> {
+  return Object.fromEntries(Object.entries(trips).filter(([, t]) => t.deletedAt === null))
 }
 
 export interface MergeSummary {
@@ -173,6 +212,31 @@ export function findProbableDuplicates(trip: Trip): DuplicateGroup[] {
       reason: 'Same date, same amount, same payer — entered on different phones.',
       expenses: [...list].sort((a, b) => a.createdAt - b.createdAt),
     })
+  }
+  return groups
+}
+
+/**
+ * The same, for repayments. With live sync the payer and the receiver can
+ * each tap Record for one payment, on two phones. Each tap is a separate
+ * record, so the payment counts twice and the debt flips: the receiver is
+ * suddenly shown owing it back. Same payer, receiver, amount and day,
+ * recorded on different phones, is flagged for a human to decide.
+ */
+export function findProbableDuplicateSettlements(trip: Trip): Settlement[][] {
+  const buckets = new Map<string, Settlement[]>()
+  for (const s of Object.values(trip.settlements)) {
+    if (s.deletedAt !== null) continue
+    const key = `${s.date}|${s.amountMinor}|${s.fromMember}|${s.toMember}`
+    const list = buckets.get(key)
+    if (list) list.push(s)
+    else buckets.set(key, [s])
+  }
+  const groups: Settlement[][] = []
+  for (const list of buckets.values()) {
+    if (list.length < 2) continue
+    if (new Set(list.map((s) => s.updatedBy)).size < 2) continue
+    groups.push([...list].sort((a, b) => a.createdAt - b.createdAt))
   }
   return groups
 }
