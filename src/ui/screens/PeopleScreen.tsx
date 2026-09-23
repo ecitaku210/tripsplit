@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { Avatar, Money, NotFound, TopBar } from '../components'
+import { Icon } from '../icons'
 import { navigate } from '../router'
 import type { Id } from '../../domain/types'
 
@@ -38,7 +39,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
             {members.map((m) => {
               const net = netOf(m.id)
               return (
-                <div key={m.id} className="row" style={{ cursor: 'default' }}>
+                <div key={m.id} className="row static">
                   <Avatar member={m} />
                   <div className="grow">
                     {editing === m.id ? (
@@ -60,11 +61,13 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
                       <>
                         <div className="title">
                           {m.name}
-                          {m.id === me && <> <span className="chip tiny">you</span></>}
+                          {m.id === me && <span className="chip tiny accent">you</span>}
                         </div>
                         <div className="meta">
-                          net <Money amount={net} currency={trip.currency} signed />
-                          {net === 0 ? ' · square' : ' · not settled yet'}
+                          {net > 0 ? 'is owed ' : net < 0 ? 'owes ' : 'all square'}
+                          {net !== 0 && (
+                            <Money amount={Math.abs(net)} currency={trip.currency} />
+                          )}
                         </div>
                       </>
                     )}
@@ -72,17 +75,18 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
                   {editing !== m.id && (
                     <>
                       <button
-                        className="btn icon ghost"
+                        className="btn ghost icon-only"
                         aria-label={`Rename ${m.name}`}
                         onClick={() => {
                           setEditing(m.id)
                           setEditName(m.name)
                         }}
                       >
-                        Edit
+                        <Icon name="edit" size={18} />
                       </button>
                       <button
-                        className="btn icon danger"
+                        className="btn ghost icon-only"
+                        style={{ color: 'var(--negative)' }}
                         aria-label={`Remove ${m.name}`}
                         onClick={() => {
                           const warning =
@@ -98,7 +102,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
                           }
                         }}
                       >
-                        Remove
+                        <Icon name="trash" size={18} />
                       </button>
                     </>
                   )}
@@ -135,6 +139,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
                 setNewName('')
               }}
             >
+              <Icon name="plus" size={18} />
               Add
             </button>
           </div>
@@ -195,6 +200,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
               }
             }}
           >
+            <Icon name="trash" size={18} />
             Delete this trip
           </button>
         </div>
