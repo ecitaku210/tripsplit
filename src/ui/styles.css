@@ -547,6 +547,31 @@ button.link {
   cursor: pointer;
 }
 
+/* The expense detail hero: amount, payer, and what it means for the reader. */
+.hero.detail .headline {
+  font-size: 2.25rem;
+}
+
+.hero .paid-by {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.9375rem;
+  color: var(--text-dim);
+}
+
+.hero .paid-by strong {
+  color: var(--text);
+}
+
+.hero .lede.mine.pos strong {
+  color: var(--positive);
+}
+.hero .lede.mine.neg strong {
+  color: var(--negative);
+}
+
 /* ---------- pills ---------- */
 
 .pill {

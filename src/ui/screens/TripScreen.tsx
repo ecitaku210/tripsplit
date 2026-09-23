@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
-import { computeSplit } from '../../domain/split'
 import { findProbableDuplicates, findProbableDuplicateSettlements } from '../../domain/merge'
 import { unsyncableExpenses } from '../../domain/ledger'
 import { formatMoney } from '../../domain/money'
@@ -24,6 +23,7 @@ import { Icon } from '../icons'
 import { navigate } from '../router'
 import { useToast } from '../toast'
 import { dayLabel } from '../dates'
+import { myLineOn } from '../expenseLines'
 import type { Expense, Id, Trip } from '../../domain/types'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import type { SyncStatus } from '../../sync/engine'
@@ -288,30 +288,6 @@ function Warnings({ trip }: { trip: Trip }) {
       )}
     </div>
   )
-}
-
-/**
- * The small line under an expense's amount: what it means for the reader.
- * "you owe ₹800" when someone else paid and you were in the split, "you lent
- * ₹1,600" when you paid for others. Where the reader stands on each line,
- * without doing arithmetic.
- */
-function myLineOn(
-  expense: Expense,
-  me: Id | undefined,
-  currency: Trip['currency'],
-): { text: string; tone: 'pos' | 'neg' | '' } | null {
-  if (!me) return null
-  const split = computeSplit(expense.amountMinor, expense.splitMode, expense.parts)
-  if (!split.ok) return null
-  const share = split.shares.get(me) ?? 0
-  if (expense.paidBy === me) {
-    const lent = expense.amountMinor - share
-    if (lent <= 0) return { text: 'just you', tone: '' }
-    return { text: `you lent ${formatMoney(lent, currency)}`, tone: 'pos' }
-  }
-  if (share <= 0) return { text: 'not involved', tone: '' }
-  return { text: `you owe ${formatMoney(share, currency)}`, tone: 'neg' }
 }
 
 interface Day {

@@ -142,8 +142,9 @@ export function HelpScreen() {
           </Q>
           <Q q="Fix or delete an expense">
             <p>
-              Tap the expense, change it, tap <strong>Save</strong>. To remove it, tap{' '}
-              <strong>Delete expense</strong> at the bottom. Everyone gets the change by itself.
+              Tap the expense to see who owes what for it, then tap <strong>Edit</strong>, change
+              it, tap <strong>Save</strong>. To remove it, tap <strong>Delete expense</strong> at
+              the bottom of the edit screen. Everyone gets the change by itself.
               Deleted by mistake? Tap <strong>Undo</strong> on the message at the bottom within a
               few seconds. That works for removed people and repayments too.
             </p>

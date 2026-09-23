@@ -4,6 +4,7 @@ import { useRoute } from './router'
 import { HomeScreen } from './screens/HomeScreen'
 import { TripScreen } from './screens/TripScreen'
 import { ExpenseEditor } from './screens/ExpenseEditor'
+import { ExpenseDetail } from './screens/ExpenseDetail'
 import { SettleScreen } from './screens/SettleScreen'
 import { ShareScreen } from './screens/ShareScreen'
 import { PeopleScreen } from './screens/PeopleScreen'
@@ -31,6 +32,9 @@ function Routes() {
     case 'trip':
       return <TripScreen tripId={route.tripId} />
     case 'expense':
+      if (!route.edit && route.expenseId) {
+        return <ExpenseDetail tripId={route.tripId} expenseId={route.expenseId} />
+      }
       // `key` forces a fresh editor when switching between expenses, so the
       // form state never leaks from one expense into the next.
       return (

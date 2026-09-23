@@ -6,7 +6,7 @@ import { formatMinor, parseAmount } from '../../domain/money'
 import { isIsoDate } from '../../domain/ledger'
 import { Avatar, Field, Money, NotFound, Segmented, TopBar } from '../components'
 import { Icon } from '../icons'
-import { back } from '../router'
+import { back, leave } from '../router'
 import { useToast } from '../toast'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import type { Id, SplitMode } from '../../domain/types'
@@ -143,6 +143,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                   : null
 
   const canSave = problem === null
+  /** Where this form was opened from, for back and cancel. */
+  const parent = existing ? `/trip/${tripId}/expense/${existing.id}` : `/trip/${tripId}`
 
   /**
    * A blank new form is not a mistake the user has made yet, so it should not
@@ -164,8 +166,9 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
       note: note.trim(),
     })
     // Back, not forward: the editor's job is done, so it must not stay in
-    // history for the phone's back button to return to.
-    back(`/trip/${tripId}`)
+    // history for the phone's back button to return to. An existing expense
+    // returns to its detail view, a new one to the trip.
+    back(parent)
     // Says where the data is, in one line. "Saved" alone leaves the person
     // wondering whether their friends have it yet.
     const reach =
@@ -187,11 +190,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
 
   return (
     <>
-      <TopBar
-        title={existing ? 'Edit expense' : 'Add expense'}
-        onBack
-        backTo={`/trip/${tripId}`}
-      />
+      <TopBar title={existing ? 'Edit expense' : 'Add expense'} onBack backTo={parent} />
       <div className="content no-fab">
         <Field label={`Amount (${trip.currency.code})`}>
           <div className="amount-wrap">
@@ -357,7 +356,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
 
         <div className="spacer" />
         <div className="btn-row">
-          <button className="btn ghost" onClick={() => back(`/trip/${tripId}`)}>
+          <button className="btn ghost" onClick={() => back(parent)}>
             Cancel
           </button>
           <button className="btn primary" disabled={!canSave} onClick={save}>
@@ -377,7 +376,9 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                 // No "are you sure?": the toast carries Undo instead.
                 const id = existing.id
                 deleteExpense(tripId, id)
-                back(`/trip/${tripId}`)
+                // Two screens back: the detail view behind this editor is
+                // about the expense just deleted.
+                leave(`/trip/${tripId}`, 2)
                 toast(`Deleted ${existing.description || 'expense'}`, {
                   action: { label: 'Undo', onClick: () => restoreExpense(tripId, id) },
                 })
