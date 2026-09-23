@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { liveMembers } from '../../domain/balance'
 import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
-import { formatMinor, parseAmount } from '../../domain/money'
+import { formatMinor, formatMoney, parseAmount } from '../../domain/money'
+import { amountInWords } from '../../domain/words'
 import { isIsoDate } from '../../domain/ledger'
 import { Avatar, Field, Money, NotFound, Segmented, TopBar, firstName } from '../components'
 import { Icon } from '../icons'
@@ -191,7 +192,13 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
 
   return (
     <>
-      <TopBar title={existing ? 'Edit expense' : 'Add expense'} onBack backTo={parent} />
+      <TopBar
+        title={existing ? 'Edit expense' : 'Add expense'}
+        subtitle={trip.name}
+        onBack
+        backTo={parent}
+        backLabel={existing ? existing.description || 'Expense' : trip.name}
+      />
       <div className="content no-fab">
         <Field label={`Amount (${trip.currency.code})`}>
           <div className="amount-wrap">
@@ -210,6 +217,19 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
             }}
           />
           </div>
+          {/*
+            The amount read back in words as it is typed. A misplaced zero
+            is the commonest money mistake, and "fifteen thousand" versus
+            "one lakh fifty thousand" is caught by the eye where 15000 and
+            150000 are not.
+          */}
+          {amountMinor !== null && amountMinor > 0 && (
+            <p className="amount-words" aria-live="polite">
+              <span className="num">{formatMoney(amountMinor, trip.currency)}</span>
+              {' · '}
+              {amountInWords(amountMinor, trip.currency)}
+            </p>
+          )}
         </Field>
 
         <Field label="What was it for?">

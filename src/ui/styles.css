@@ -119,14 +119,18 @@ body {
   background: var(--bg);
 }
 
-/* A faint glow at the top of every screen: depth without a picture. */
-.app::before {
+/*
+ * A teal glow at the top of the HOME screen only: depth without a picture,
+ * and one more cue that this is the top of the app. Sub-screens sit on
+ * plain black so the eye reads them as "inside".
+ */
+.app.home::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
   height: 320px;
   pointer-events: none;
-  background: radial-gradient(70% 60% at 50% -10%, rgba(45, 212, 191, 0.14), transparent 70%);
+  background: radial-gradient(70% 60% at 50% -10%, rgba(45, 212, 191, 0.16), transparent 70%);
 }
 
 .topbar {
@@ -137,29 +141,85 @@ body {
   align-items: center;
   gap: 6px;
   min-height: 56px;
-  padding: calc(var(--safe-top) + 8px) 10px 8px;
+  padding: calc(var(--safe-top) + 8px) 12px 8px;
   background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
 
-.topbar h1 {
+.topbar .grow {
   flex: 1;
-  min-width: 0;
-  margin: 0 4px;
-  font-size: 1.0625rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.topbar .sub {
+/* HOME: the mark, the wordmark, a tagline. The only screen that looks like this. */
+.topbar.home {
+  min-height: 72px;
+  padding: calc(var(--safe-top) + 12px) 16px 12px;
+  gap: 12px;
+  border-bottom-color: transparent;
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.1), rgba(0, 0, 0, 0)), rgba(0, 0, 0, 0.7);
+}
+
+.topbar.home h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.topbar.home .sub {
   display: block;
-  font-size: 0.75rem;
-  font-weight: 450;
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-dim);
+}
+
+/* SUB-SCREENS: a back pill naming the parent, then the title in the page. */
+.topbar.sub {
+  background: rgba(0, 0, 0, 0.86);
+}
+
+.backpill {
+  min-height: 40px;
+  padding: 0 12px 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  font-weight: 600;
+  max-width: 60%;
+}
+
+.backpill .parent {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-head {
+  padding: 18px 16px 0;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.page-head .sub {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
   color: var(--text-dim);
 }
 
@@ -173,9 +233,9 @@ body {
 .brand .mark {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
   color: var(--accent-ink);
   background: linear-gradient(145deg, var(--accent), var(--accent-2));
   box-shadow: var(--shadow-glow);
@@ -903,6 +963,19 @@ textarea::placeholder {
   font-weight: 600;
   color: var(--text-faint);
   pointer-events: none;
+}
+
+.amount-words {
+  margin: 8px 2px 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+  animation: rise 0.2s var(--ease);
+}
+
+.amount-words .num {
+  font-weight: 650;
+  color: var(--text);
 }
 
 input.amount-input {

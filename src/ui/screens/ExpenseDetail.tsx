@@ -47,9 +47,10 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
     <>
       <TopBar
         title={expense.description || 'Expense'}
-        subtitle={shortDate(expense.date)}
+        subtitle={`${shortDate(expense.date)} · ${trip.name}`}
         onBack
         backTo={`/trip/${tripId}`}
+        backLabel={trip.name}
         right={
           <button
             className="btn ghost icon"
