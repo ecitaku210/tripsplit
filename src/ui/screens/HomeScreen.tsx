@@ -110,9 +110,10 @@ export function HomeScreen() {
 
         <div className="section">
           <div className="notice">
-            <strong>Everything stays on this phone.</strong> There is no server and no account, so
-            balances only include what this phone knows. Use <strong>Share</strong> inside a trip to
-            swap updates with everyone — do it daily, not just at the end.
+            <strong>Trips sync live between everyone&apos;s phones</strong> whenever you have signal,
+            through Google Firebase — so expenses are stored there as well as on your phone. With no
+            signal the app keeps working and catches up once you are back online. Use{' '}
+            <strong>Share</strong> inside a trip to invite someone new.
           </div>
         </div>
       </div>

@@ -5,20 +5,38 @@ import { findProbableDuplicates } from '../../domain/merge'
 import { Avatar, Empty, Money, NotFound, Segmented, TopBar, shortDate } from '../components'
 import { navigate } from '../router'
 import type { Id, Trip } from '../../domain/types'
+import { useSyncStatus } from '../../sync/SyncProvider'
+import type { SyncStatus } from '../../sync/engine'
+
+/**
+ * Worded for someone standing at a till, not for a developer. The two
+ * degraded states both say the data is safe, because the first question a
+ * person has on seeing "offline" is whether they just lost the expense.
+ */
+const SYNC_LABEL: Record<SyncStatus, string> = {
+  connecting: 'Connecting…',
+  live: '● Live',
+  saving: 'Saving…',
+  offline: 'Offline · saved on this phone',
+  'too-large': 'Too big to sync live · use Share',
+  error: 'Sync problem · saved on this phone',
+}
 
 type Tab = 'expenses' | 'balances'
 
 export function TripScreen({ tripId }: { tripId: Id }) {
   const trip = useTrip(tripId)
   const [tab, setTab] = useState<Tab>('expenses')
+  const sync = useSyncStatus(tripId)
 
   if (!trip) return <NotFound what="trip" />
+  const people = `${liveMembers(trip).length} people`
 
   return (
     <>
       <TopBar
         title={trip.name}
-        subtitle={`${liveMembers(trip).length} people`}
+        subtitle={sync ? `${people} · ${SYNC_LABEL[sync]}` : people}
         onBack
         right={
           <button className="btn ghost icon" onClick={() => navigate(`/trip/${tripId}/people`)}>
@@ -263,8 +281,8 @@ function BalancesTab({ trip }: { trip: Trip }) {
         </div>
       )}
       <p className="hint">
-        These numbers only cover expenses that have reached this phone. Sync with everyone before
-        treating them as final.
+        These numbers include every expense that has reached this phone. If someone has been
+        offline, their latest expenses arrive when they reconnect.
       </p>
     </div>
   )

@@ -1,8 +1,8 @@
 # TripSplit
 
 A Splitwise-style expense splitter for group trips. It installs on any phone
-from a browser, works with no signal, and needs no server, no account and no
-sign-up.
+from a browser, syncs live between everyone's phones, keeps working with no
+signal, and needs no account or sign-up.
 
 ---
 
@@ -12,21 +12,30 @@ sign-up.
 - Split **equally**, by **exact amounts**, by **shares** (a couple counts as 2), or by **percentage**
 - See at a glance who is up and who is down
 - **Settle up**: nets everyone off into the fewest payments instead of everyone paying everyone
-- Swap updates with the group by sharing a file or a code — over WhatsApp, AirDrop, email, anything
+- **Live sync** — an expense added on one phone appears on everyone else's in about a second
+- Works offline, and catches up automatically when signal returns
+- Invite people by sharing a file or a code — over WhatsApp, AirDrop, email, anything
 
 ---
 
-## The one thing you must understand before using it
+## How the phones stay in step
 
-There is no server. **Each phone only knows what that phone typed** until you sync.
+Trips sync live through **Google Firebase (Firestore)**. Add an expense and
+everyone else on the trip sees it within about a second, with no button to
+press.
 
-If you log dinner and your friend logs the taxi, your balance screen is wrong
-until one of you shares. That is not a bug, it is the direct cost of having no
-backend — and it is the trade you accept in exchange for no accounts, no
-hosting bill and no company holding your group's spending history.
+With no signal the app keeps working normally. Changes are saved on the phone,
+the trip screen says **Offline · saved on this phone**, and everything goes up
+by itself when signal returns.
 
-**Sync every evening, not just at the end of the trip.** It takes one tap, and
-sending the same update twice is completely harmless (see below).
+Two things follow from that, and your group should know them:
+
+- **Expenses are stored on Google's servers**, not only on your phones.
+  Anyone holding a trip's share code can read and edit that trip.
+- **Sync depends on Firebase staying available.** If it ever went away, the
+  app would still work fully offline, and manual sharing still works. The
+  pre-Firebase version is kept on the [`offline-only`](../../tree/offline-only)
+  branch.
 
 The first time you open a trip someone shared with you, the app asks **which
 person on the trip is you**. Answer it: until you do, the app cannot know whose
@@ -37,6 +46,7 @@ balance to show you, and "Who paid?" has nothing sensible to pre-fill.
 ## How the sync actually works
 
 The interesting part of this app is not the expense form, it is the merge.
+Firebase is only the postman; the merge is the brain.
 
 Every record — expense, person, repayment — carries four fields:
 
@@ -60,6 +70,20 @@ ledgers:
 Those three together mean everyone can send everyone their file, in any order,
 as often as they like, and every phone converges on the same answer. That is
 what makes "just send it in the group chat" a safe protocol instead of a mess.
+
+### Why Firebase needs so little code
+
+Because merging is commutative, associative and idempotent, the server never
+has to resolve a conflict. Each trip is **one Firestore document** holding the
+compressed ledger, which the server stores without understanding. A phone that
+changes something reads the document, merges, and writes it back inside a
+transaction — correct even when several phones do it at the same instant.
+
+The one thing that needs care is not writing when nothing changed: a write
+fires every listener, including the writer's own, and a phone that re-wrote on
+every snapshot would loop forever at a cost per write. `src/sync/protocol.ts`
+decides every write by comparing full content, and holds no Firebase code, so
+all of it is tested without a network.
 
 **Why tombstones?** If deleting an expense actually removed the record, then
 merging with a friend whose copy still had it would silently bring it back.
@@ -130,18 +154,36 @@ with `BASE_PATH=/` when serving from a domain root.
 
 ---
 
+## Firebase and the security rules
+
+The Firebase config in `src/sync/config.ts` is **public by design** — it ships
+inside the JavaScript bundle and anyone can read it. It identifies the
+project; it grants nothing. What protects the data is `firestore.rules`, which:
+
+- requires a signed-in (anonymous) phone for every read and write
+- allows reading a trip only by its id, and refuses listing, so trip ids
+  cannot be discovered
+- accepts only a well-formed document: the ledger, a server-stamped time, and
+  the writer's own id — no extra fields, no forged timestamps, capped in size
+- refuses deletes entirely, so no client can wipe a trip for the group
+
+**The rules must be published in the Firebase console** (Firestore → Rules →
+paste the file → Publish). CI tests the copy in this repository; it cannot see
+what is live, so after changing the file, publish it again.
+
 ## Running it locally
 
 Needs **Node 22.12 or newer** (Vitest 5 sets that floor; it is enforced by
-`engines` in `package.json`).
+`engines` in `package.json`). The emulator tests also need **Java 11+**.
 
 ```bash
 npm install
-npm run dev        # dev server
-npm test           # the domain test suite
-npm run build      # production build into dist/
-npm run preview    # serve the built app
-npm run icons      # regenerate the PWA icons
+npm run dev            # dev server, talking to the real Firebase project
+npm test               # domain and sync-protocol tests, no network needed
+npm run test:emulator  # security rules + two-phone sync against Google's emulator
+npm run build          # production build into dist/
+npm run preview        # serve the built app
+npm run icons          # regenerate the PWA icons
 ```
 
 To try it on your actual phone, run `npm run dev -- --host` and open the LAN
@@ -165,6 +207,13 @@ src/
   storage/
     db.ts          localStorage persistence, quota handling
     store.tsx      React state; every mutation stamps the LWW fields
+  sync/            live sync over Firestore
+    protocol.ts    every sync decision, pure and tested without a network
+    engine.ts      the Firestore adapter: moves bytes, decides nothing
+    SyncProvider.tsx  loads the engine lazily and connects it to the store
+    config.ts      the public Firebase config
+firestore.rules    the only barrier protecting the database — tested in CI
+test/emulator/     rules and two-phone tests against the Firestore emulator
   ui/              screens and components
 ```
 
@@ -182,8 +231,14 @@ These are deliberate, not oversights:
   per-expense FX rates and a rate source, which is a real feature, not a flag.
 - **One payer per expense.** If two people split a bill at the till, log two
   expenses. Keeping this single-valued keeps the balance maths honest.
-- **Data lives in this browser's storage.** Uninstalling the PWA or clearing
-  site data deletes it. Export regularly — that is also your backup.
+- **Your copy lives in this browser's storage**, and the trip also lives in
+  Firebase. Clearing site data removes this phone's copy; it comes back from
+  Firebase once you re-import the trip.
+- **Anyone with a trip's share code can read and edit it.** That is the
+  membership model: there are no accounts to revoke.
+- **One trip must fit in one Firestore document** (about 700 KB compressed —
+  thousands of expenses). A larger trip stops syncing live and says so;
+  manual sharing still works.
 - **Removing someone does not rewrite history.** Their past shares stay on the
   books, because recalculating them would change what everyone else owes.
 - **No photos or trip journal.** Text only, which keeps a whole trip under a

@@ -1,4 +1,5 @@
 import { StoreProvider } from '../storage/store'
+import { SyncProvider } from '../sync/SyncProvider'
 import { useRoute } from './router'
 import { HomeScreen } from './screens/HomeScreen'
 import { TripScreen } from './screens/TripScreen'
@@ -11,9 +12,11 @@ import { ImportScreen } from './screens/ImportScreen'
 export function App() {
   return (
     <StoreProvider>
-      <div className="app">
-        <Routes />
-      </div>
+      <SyncProvider>
+        <div className="app">
+          <Routes />
+        </div>
+      </SyncProvider>
     </StoreProvider>
   )
 }

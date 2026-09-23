@@ -29,33 +29,33 @@ export type PullDecision =
   | { action: 'ignore'; reason: 'identical' | 'unreadable' | 'wrong-trip' }
 
 /**
- * Stable fingerprint of a trip's content.
+ * Canonical fingerprint of a trip's full content.
  *
  * Used to answer one question: would writing this change anything? Without it
  * the app deadlocks into a billing loop — a write fires the listener, the
  * listener merges and writes, which fires the listener again, forever. Each
- * lap costs a document write. This is the single most expensive mistake
- * available in a realtime database, so it gets its own function and its own
- * tests.
+ * lap costs a document write. This is the most expensive mistake available in
+ * a realtime database, so it gets its own function and its own tests.
+ *
+ * It serialises the WHOLE trip with sorted keys, not just record ids and
+ * timestamps. A metadata-only fingerprint looks sufficient but is not: the
+ * merge breaks exact (updatedAt, updatedBy) ties by comparing content, so two
+ * replicas can hold different versions of one record under identical
+ * metadata. A metadata fingerprint would call them equal, neither phone would
+ * push, and they would disagree forever without any error.
  */
 export function fingerprint(trip: Trip): string {
-  const parts: string[] = [
-    trip.id,
-    trip.name,
-    String(trip.updatedAt),
-    String(trip.deletedAt),
-    trip.currency.code,
-  ]
-  // Sorted so two phones that hold the same data agree on the fingerprint
-  // regardless of the order their objects happen to be keyed in.
-  for (const key of ['members', 'expenses', 'settlements'] as const) {
-    const records = trip[key] as Record<Id, { id: Id; updatedAt: number; updatedBy: Id }>
-    for (const id of Object.keys(records).sort()) {
-      const r = records[id]!
-      parts.push(`${key}:${r.id}:${r.updatedAt}:${r.updatedBy}`)
-    }
-  }
-  return parts.join('|')
+  return canonical(trip)
+}
+
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
+  const obj = value as Record<string, unknown>
+  return `{${Object.keys(obj)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${canonical(obj[k])}`)
+    .join(',')}}`
 }
 
 /** Decode a blob that came off the wire. Never throws; bad input is ignored. */
