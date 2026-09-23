@@ -9,7 +9,7 @@ import {
   unsyncableExpenses,
 } from './ledger'
 import { makeExpense, makeMember, makeTrip, randomTrip } from './testkit'
-import { parseAmount, formatMinor, formatMoney } from './money'
+import { parseAmount, formatMinor, formatMoney, evaluateAmount } from './money'
 import { SCHEMA_VERSION, SEALED_SCHEMA } from './types'
 
 describe('parseAmount', () => {
@@ -399,5 +399,29 @@ describe('a sealed envelope', () => {
     }
     const d = parseLedger(raw)
     expect(!d.ok && d.reason).toBe('sealed')
+  })
+})
+
+describe('evaluateAmount: sums typed into the amount field', () => {
+  it.each([
+    ['1200', 120000],
+    ['1200+340', 154000],
+    ['1200 + 340 + 80', 162000],
+    ['1200-200', 100000],
+    ['₹1,200+340.50', 154050],
+    ['-500', -50000],
+  ])('%s -> %i', (text, minor) => {
+    expect(evaluateAmount(text, 2)).toBe(minor)
+  })
+
+  it('rejects anything that is not amounts joined by + or -', () => {
+    for (const bad of ['1200*2', '1200+', '+', '1200++300', '12a+3', '1200+-300']) {
+      expect(evaluateAmount(bad, 2)).toBeNull()
+    }
+  })
+
+  it('agrees with parseAmount on a plain amount, including its rejections', () => {
+    expect(evaluateAmount('0.07', 2)).toBe(parseAmount('0.07', 2))
+    expect(evaluateAmount('1.005', 2)).toBe(parseAmount('1.005', 2))
   })
 })

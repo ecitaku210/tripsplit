@@ -27,21 +27,29 @@
   --text: #eef3fb;
   --text-dim: #9fb0c6;
   --text-faint: #7b8da6;
-  --accent: #2dd4bf;
-  --accent-2: #14b8a6;
-  --accent-ink: #04211f;
-  --accent-soft: rgba(45, 212, 191, 0.14);
+  /*
+   * Gold on black with navy surfaces. Gold was chosen over teal with eyes
+   * open: it shares a hue with the classic "warning" amber, so warnings
+   * moved to ORANGE (--warn) and stay visibly redder than the brand. Every
+   * tint of the brand derives from --accent-rgb, so a future recolour is a
+   * three-line change here and nowhere else.
+   */
+  --accent: #fbbf24;
+  --accent-2: #f59e0b;
+  --accent-rgb: 251, 191, 36;
+  --accent-ink: #2a1a02;
+  --accent-soft: rgba(var(--accent-rgb), 0.16);
   --positive: #34d399;
   --positive-soft: rgba(52, 211, 153, 0.14);
   --negative: #fb7185;
   --negative-soft: rgba(251, 113, 133, 0.14);
-  --warn: #fbbf24;
-  --warn-soft: rgba(251, 191, 36, 0.14);
+  --warn: #fb7a2a;
+  --warn-soft: rgba(251, 122, 42, 0.16);
   --radius-sm: 10px;
   --radius: 16px;
   --radius-lg: 22px;
   --shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.7);
-  --shadow-glow: 0 10px 28px -10px rgba(45, 212, 191, 0.45);
+  --shadow-glow: 0 10px 28px -10px rgba(var(--accent-rgb), 0.45);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   /* Respect the notch and the home indicator on iPhones. */
   --safe-top: env(safe-area-inset-top, 0px);
@@ -120,7 +128,7 @@ body {
 }
 
 /*
- * A teal glow at the top of the HOME screen only: depth without a picture,
+ * A brand-coloured glow at the top of the HOME screen only: depth without a picture,
  * and one more cue that this is the top of the app. Sub-screens sit on
  * plain black so the eye reads them as "inside".
  */
@@ -130,7 +138,7 @@ body {
   inset: 0 0 auto;
   height: 320px;
   pointer-events: none;
-  background: radial-gradient(70% 60% at 50% -10%, rgba(45, 212, 191, 0.16), transparent 70%);
+  background: radial-gradient(70% 60% at 50% -10%, rgba(var(--accent-rgb), 0.16), transparent 70%);
 }
 
 .topbar {
@@ -158,7 +166,7 @@ body {
   padding: calc(var(--safe-top) + 12px) 16px 12px;
   gap: 12px;
   border-bottom-color: transparent;
-  background: linear-gradient(180deg, rgba(45, 212, 191, 0.1), rgba(0, 0, 0, 0)), rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(0, 0, 0, 0)), rgba(0, 0, 0, 0.7);
 }
 
 .topbar.home h1 {
@@ -508,7 +516,7 @@ body {
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(45, 212, 191, 0.22), transparent 70%);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.22), transparent 70%);
   pointer-events: none;
 }
 
@@ -1037,7 +1045,7 @@ input.amount-input {
 
 .notice,
 .alert.warn {
-  border-color: rgba(251, 191, 36, 0.35);
+  border-color: rgba(251, 122, 42, 0.4);
   background: var(--warn-soft);
 }
 
@@ -1433,6 +1441,62 @@ details.howto .body strong {
   background: var(--negative);
 }
 
+/* ---------- spend by category ---------- */
+
+.spend-bar {
+  display: flex;
+  height: 10px;
+  margin: 0 0 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+
+.spend-bar > span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}
+
+.spend-bar > span + span {
+  margin-left: 2px;
+}
+
+.spend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9375rem;
+}
+
+.spend-row:last-child {
+  border-bottom: 0;
+}
+
+.spend-row .swatch {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: #06121c;
+}
+
+.spend-row .label {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.spend-row .pct {
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+  margin-right: 8px;
+}
+
 /* ---------- editor: quick chips and payer picker ---------- */
 
 .chips {
@@ -1462,6 +1526,26 @@ details.howto .body strong {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+/* "Same as last time": a full-width chip that reads as one line. */
+.chip.pick.last {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.chip.pick.last > svg {
+  flex: none;
+}
+
+.chip.pick.last .txt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chip.pick.on {
@@ -1672,6 +1756,16 @@ details.howto .body strong {
 .pay-line .arrow {
   flex: none;
   color: var(--text-faint);
+}
+
+/* People who ask the OS for more contrast get firmer edges and brighter secondary text. */
+@media (prefers-contrast: more) {
+  :root {
+    --line: rgba(148, 163, 184, 0.35);
+    --line-strong: rgba(148, 163, 184, 0.55);
+    --text-dim: #c5d0df;
+    --text-faint: #9fb0c6;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

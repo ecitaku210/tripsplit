@@ -52,6 +52,28 @@ export function parseAmount(input: string, decimals: number): Minor | null {
 }
 
 /**
+ * `evaluateAmount("1200+340+80", 2)` -> 162000. People add a bill up in the
+ * amount field; letting them type the sum saves the calculator app. Only `+`
+ * and `-` between amounts; anything else is rejected the same way a bad
+ * amount is. A single plain amount goes through unchanged.
+ */
+export function evaluateAmount(input: string, decimals: number): Minor | null {
+  const text = input.replace(/\s/g, '')
+  if (!/[+-]/.test(text.slice(1))) return parseAmount(input, decimals)
+  const tokens = text.match(/[+-]?[^+-]+/g)
+  if (!tokens || tokens.join('') !== text) return null
+  let total = 0
+  for (const t of tokens) {
+    const sign = t.startsWith('-') ? -1 : 1
+    const body = t.replace(/^[+-]/, '')
+    const v = parseAmount(body, decimals)
+    if (v === null || v < 0) return null
+    total += sign * v
+  }
+  return isValidMinor(total) ? total : null
+}
+
+/**
  * How digits are grouped for reading. `thousand` is 1,234,567; `lakh` is the
  * Indian system, 12,34,567: the last three digits, then pairs. To someone who
  * thinks in lakhs and crores, "₹150,000" takes a beat to read and

@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { tap } from './haptics'
 
 /**
  * One short message at the bottom of the screen, gone by itself.
@@ -91,6 +92,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <button
                 className="act"
                 onClick={() => {
+                  tap()
                   toast.action?.onClick()
                   dismiss()
                 }}

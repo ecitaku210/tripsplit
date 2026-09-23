@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
-import { liveMembers } from '../../domain/balance'
 import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
-import { formatMinor, formatMoney, parseAmount } from '../../domain/money'
+import { evaluateAmount, formatMinor, formatMoney, parseAmount } from '../../domain/money'
 import { amountInWords } from '../../domain/words'
 import { isIsoDate } from '../../domain/ledger'
 import { Avatar, Field, Money, NotFound, Segmented, TopBar, firstName } from '../components'
@@ -11,6 +10,8 @@ import { back, leave } from '../router'
 import { useToast } from '../toast'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import { CATEGORIES } from '../categories'
+import { tap } from '../haptics'
+import { liveExpenses, liveMembers } from '../../domain/balance'
 import type { Id, SplitMode } from '../../domain/types'
 
 const MODE_OPTIONS: { value: SplitMode; label: string }[] = [
@@ -52,6 +53,15 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
     return [...live, ...departed]
   }, [trip, existing])
 
+  /** The newest live expense on the trip, for "same as last time". */
+  const last = useMemo(() => (trip ? liveExpenses(trip)[0] ?? null : null), [trip])
+  const lastPayerName = last && trip ? firstName(trip.members[last.paidBy]?.name ?? 'someone') : ''
+  const lastSplitLabel = last
+    ? last.splitMode === 'equal'
+      ? `split equally between ${last.parts.length}`
+      : `split by ${last.splitMode === 'exact' ? 'amounts' : last.splitMode === 'shares' ? 'shares' : 'percentage'}`
+    : ''
+
   const [description, setDescription] = useState(existing?.description ?? '')
   const [amountText, setAmountText] = useState(
     existing ? formatMinor(existing.amountMinor, decimals).replace(/,/g, '') : '',
@@ -90,7 +100,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
     return out
   })
 
-  const amountMinor = parseAmount(amountText, decimals)
+  // Sums are allowed: "1200+340+80" is what a person adding up a bill types.
+  const amountMinor = evaluateAmount(amountText, decimals)
 
   const parts = useMemo(() => {
     const chosen = members.filter((m) => included.has(m.id))
@@ -127,7 +138,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
     amountText.trim() === ''
       ? 'Enter an amount.'
       : amountMinor === null
-        ? `That is not an amount this currency can hold (max ${decimals} decimal places).`
+        ? `That is not an amount this currency can hold (max ${decimals} decimal places). Sums like 1200+340 are fine.`
         : amountMinor <= 0
           ? 'Amount must be more than zero.'
           : split && !split.ok
@@ -167,6 +178,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
       parts,
       note: note.trim(),
     })
+    tap()
     // Back, not forward: the editor's job is done, so it must not stay in
     // history for the phone's back button to return to. An existing expense
     // returns to its detail view, a new one to the trip.
@@ -233,19 +245,11 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
         </Field>
 
         <Field label="What was it for?">
-          <input
-            value={description}
-            placeholder="Dinner at the beach shack"
-            maxLength={200}
-            onChange={(e) => {
-              setDescription(e.target.value)
-              setTouched(true)
-            }}
-          />
           {/*
-            One tap covers the common cases. A chip fills the description
-            when it is empty or still another chip's word; typed text is
-            never overwritten.
+            One tap covers the common cases, so the chips come first and the
+            free-text field second. A chip fills the description when it is
+            empty or still another chip's word; typed text is never
+            overwritten, only prefixed.
           */}
           <div className="chips" role="group" aria-label="Quick descriptions">
             {CATEGORIES.map((c) => {
@@ -270,6 +274,15 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
               )
             })}
           </div>
+          <input
+            value={description}
+            placeholder="Dinner at the beach shack"
+            maxLength={200}
+            onChange={(e) => {
+              setDescription(e.target.value)
+              setTouched(true)
+            }}
+          />
         </Field>
 
         <Field label="Who paid?">
@@ -300,6 +313,37 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
               )
             })}
           </div>
+          {/*
+            Trips repeat: same payer, same split, dinner after dinner. One
+            tap copies who paid and how it was split from the newest expense.
+          */}
+          {!existing && last && (
+            <button
+              type="button"
+              className="chip pick last"
+              onClick={() => {
+                setPaidBy(last.paidBy)
+                setMode(last.splitMode)
+                setIncluded(new Set(last.parts.map((p) => p.memberId)))
+                const w: Record<Id, string> = {}
+                for (const p of last.parts) {
+                  w[p.memberId] =
+                    last.splitMode === 'exact'
+                      ? formatMinor(p.weight, decimals).replace(/,/g, '')
+                      : last.splitMode === 'percent'
+                        ? String(p.weight / 100)
+                        : String(p.weight)
+                }
+                setWeights(last.splitMode === 'equal' ? {} : w)
+                setTouched(true)
+              }}
+            >
+              <Icon name="refresh" size={14} />
+              <span className="txt">
+                Same as last time: {lastPayerName} paid, {lastSplitLabel}
+              </span>
+            </button>
+          )}
         </Field>
 
         <Field label="Date">
@@ -446,6 +490,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                 // No "are you sure?": the toast carries Undo instead.
                 const id = existing.id
                 deleteExpense(tripId, id)
+                tap()
                 // Two screens back: the detail view behind this editor is
                 // about the expense just deleted.
                 leave(`/trip/${tripId}`, 2)

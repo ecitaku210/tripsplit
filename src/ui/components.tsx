@@ -82,7 +82,10 @@ export function TopBar({
 export function avatarColor(id: string): string {
   let hash = 0
   for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
-  return `hsl(${hash % 360} 62% 66%)`
+  // Hues 70..330: greens, blues, violets, magentas. The 60° band around
+  // gold is the brand, the band around red is "you owe"; a person must not
+  // wear either.
+  return `hsl(${70 + (hash % 260)} 62% 66%)`
 }
 
 /** "Chirag Tandon" -> "Chirag". Dense rows have no room for surnames. */
