@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayBefore, dayLabel } from './dates'
+import { dayBefore, dayLabel, timeAgo } from './dates'
 
 describe('dayBefore', () => {
   it.each([
@@ -41,5 +41,27 @@ describe('dayLabel', () => {
   it('labels a missing or broken date honestly', () => {
     expect(dayLabel('', today)).toBe('No date')
     expect(dayLabel('2026-13-40', today)).toBe('No date')
+  })
+})
+
+describe('timeAgo', () => {
+  const now = Date.UTC(2026, 8, 23, 12, 0, 0)
+  it.each([
+    [0, 'just now'],
+    [45_000, 'just now'],
+    [5 * 60_000, '5 min ago'],
+    [3 * 3_600_000, '3 h ago'],
+    [26 * 3_600_000, 'yesterday'],
+    [4 * 86_400_000, '4 days ago'],
+  ])('%i ms ago -> %s', (delta, expected) => {
+    expect(timeAgo(now - delta, now)).toBe(expected)
+  })
+
+  it('falls back to the short date after a week', () => {
+    expect(timeAgo(now - 10 * 86_400_000, now)).toMatch(/^\d{1,2} Sep$/)
+  })
+
+  it('never says "in the future" for a clock slightly ahead', () => {
+    expect(timeAgo(now + 5_000, now)).toBe('just now')
   })
 })

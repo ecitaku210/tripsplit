@@ -39,3 +39,26 @@ export function dayLabel(iso: string, today: string): string {
   const base = `${d} ${MONTHS[mo - 1]}`
   return y === thisYear ? base : `${base} ${y}`
 }
+
+/**
+ * "just now", "5 min ago", "3 h ago", "yesterday", "4 days ago", or the
+ * short date once it is more than a week old. For "last activity" lines,
+ * where the exact timestamp would be noise.
+ */
+export function timeAgo(atMs: number, nowMs: number): string {
+  const s = Math.max(0, Math.round((nowMs - atMs) / 1000))
+  if (s < 60) return 'just now'
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m} min ago`
+  const h = Math.round(m / 60)
+  if (h < 24) return `${h} h ago`
+  const d = Math.round(h / 24)
+  if (d === 1) return 'yesterday'
+  if (d < 7) return `${d} days ago`
+  const t = new Date(atMs)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const iso = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`
+  const n = new Date(nowMs)
+  const today = `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`
+  return dayLabel(iso, today)
+}

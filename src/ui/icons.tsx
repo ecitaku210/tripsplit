@@ -32,8 +32,26 @@ export type IconName =
   | 'sparkle'
   | 'wallet'
   | 'lock'
+  | 'utensils'
+  | 'cup'
+  | 'car'
+  | 'bed'
+  | 'ticket'
+  | 'cart'
+  | 'fuel'
+  | 'tag'
+  | 'clock'
 
 const PATHS: Record<IconName, string> = {
+  utensils: 'M3 2v7a3 3 0 0 0 6 0V2M6 2v20M18 2c-2 0-3 3-3 7v2h3v11M18 2v9',
+  cup: 'M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8zM6 2v2M10 2v2M14 2v2',
+  car: 'M5 17H3v-5l2-5h14l2 5v5h-2M5 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M15 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M9 17h6M3 12h18',
+  bed: 'M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8M2 17h20M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M8 10V7h8v3',
+  ticket: 'M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6zM13 5v14',
+  cart: 'M3 3h2l2.6 12.4a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2M18 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2',
+  fuel: 'M4 22V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v17M2 22h14M14 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V9l-3-3M6 7h6v4H6z',
+  tag: 'M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7 7h.01',
+  clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
   lock: 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z',
   plus: 'M12 5v14M5 12h14',
   back: 'M15 5l-7 7 7 7',
