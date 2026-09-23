@@ -66,13 +66,13 @@ function png(size, pixel) {
   ])
 }
 
-const TEAL = [45, 212, 191]
-const TEAL_DEEP = [20, 184, 166]
-const INK = [4, 33, 31]
-const INK_SOFT = [10, 60, 56]
+const GOLD = [251, 191, 36]
+const GOLD_DEEP = [245, 158, 11]
+const INK = [42, 26, 2]
+const INK_SOFT = [92, 58, 8]
 
 /**
- * The mark: the wallet from the app's top bar, dark on the teal gradient the
+ * The mark: the wallet from the app's top bar, dark on the gold gradient the
  * app uses for its primary button. On the home screen the app then looks
  * like the app, not like a generic placeholder.
  *
@@ -94,9 +94,9 @@ function draw(size, { maskable }) {
 
     // Background plate: full bleed when maskable, a rounded square otherwise.
     const plate = maskable ? 1 : cover(roundedBox(u, v, 0.5, 0.5, corner), px)
-    // Vertical teal gradient, bright at the top.
+    // Vertical gold gradient, bright at the top.
     const g = clamp(v + 0.5)
-    const bg = mix(TEAL, TEAL_DEEP, g)
+    const bg = mix(GOLD, GOLD_DEEP, g)
 
     // Wallet body: a rounded rectangle, centred.
     const bw = art * 0.5
@@ -106,7 +106,7 @@ function draw(size, { maskable }) {
     // like the fold of a bifold wallet.
     const flapH = art * 0.11
     const flap = cover(roundedBox(u - art * 0.04, v + bh - flapH, bw * 0.9, flapH, art * 0.05), px)
-    // Clasp: a teal dot on the right of the body, cut out of the ink.
+    // Clasp: a gold dot on the right of the body, cut out of the ink.
     const clasp = cover(Math.hypot(u - bw * 0.6, v + art * 0.04) - art * 0.06, px)
 
     let c = bg

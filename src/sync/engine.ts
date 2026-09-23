@@ -18,6 +18,7 @@ import {
 import type { Id, Trip } from '../domain/types'
 import { decidePull, decidePush, MAX_BLOB_CHARS, type PushDecision } from './protocol'
 import { isSealed, open, seal } from './crypto'
+import { classifyFailure, retryDelay } from './backoff'
 
 /**
  * The Firestore adapter. It moves bytes and makes no decisions: every "should
@@ -48,6 +49,8 @@ export type SyncStatus =
   | 'outdated'
   /** The server copy is encrypted with a key this phone does not hold. */
   | 'locked'
+  /** The project's free daily quota is used up; syncing resumes after the reset. */
+  | 'quota'
   /** Something the app cannot recover from by itself, e.g. quota exhausted. */
   | 'error'
 
@@ -86,12 +89,12 @@ interface Channel {
   unsubscribe: () => void
   /** Debounce for local edits. */
   timer: Timer | null
-  /** Pending retry of a push that failed. */
+  /** Pending retry of a push that failed, and how many have failed in a row. */
   retry: Timer | null
-  retryDelay: number
-  /** Pending re-attach of a listener that died. */
+  pushFailures: number
+  /** Pending re-attach of a listener that died, and how many in a row. */
   relisten: Timer | null
-  listenDelay: number
+  listenFailures: number
   /**
    * The document last seen on or written to the server, exactly as it is on
    * the wire (sealed if encrypted). Opened afresh each time it is used, so a
@@ -102,18 +105,13 @@ interface Channel {
   again: boolean
 }
 
-/**
- * Every failure retries by itself, backing off from 2 s to at most 30 s.
- *
- * The browser's 'online' event is not enough on its own. It fires only when
- * the phone flips from "no network" to "network", and on one bar of signal or
- * a captive hotel Wi-Fi the phone never thinks it is offline at all: uploads
- * failed, nothing retried, and expenses sat on one phone until the next edit.
- * A failed attempt while offline costs nothing, so trying again is cheap.
+/*
+ * Every failure retries by itself: see backoff.ts for the schedule and why
+ * it slows right down once a failure persists. The browser's 'online' event
+ * is not enough on its own: it fires only when the phone flips from "no
+ * network" to "network", and on one bar of signal or a captive hotel Wi-Fi
+ * the phone never thinks it is offline at all. resume() resets the schedule.
  */
-const RETRY_MIN_MS = 2_000
-const RETRY_MAX_MS = 30_000
-const backoff = (ms: number) => Math.min(ms * 2, RETRY_MAX_MS)
 
 function refusalStatus(d: Extract<PushDecision, { action: 'refuse' }>): SyncStatus {
   if (d.reason === 'too-large') return 'too-large'
@@ -165,7 +163,7 @@ export function createSync(opts: SyncOptions) {
    */
   let signingIn = false
   let signInTimer: Timer | null = null
-  let signInDelay = RETRY_MIN_MS
+  let signInFailures = 0
   function signIn(): void {
     if (closed || uid !== null || signingIn) return
     if (signInTimer) {
@@ -175,18 +173,18 @@ export function createSync(opts: SyncOptions) {
     signingIn = true
     signInAnonymously(auth)
       .then(() => {
-        signInDelay = RETRY_MIN_MS
+        signInFailures = 0
       })
       .catch((err: unknown) => {
         if (closed) return
         const code = (err as { code?: string }).code ?? ''
         const s = code === 'auth/network-request-failed' || isOffline() ? 'offline' : 'error'
         for (const id of channels.keys()) status(id, s)
+        signInFailures += 1
         signInTimer = setTimeout(() => {
           signInTimer = null
           signIn()
-        }, signInDelay)
-        signInDelay = backoff(signInDelay)
+        }, retryDelay(signInFailures))
       })
       .finally(() => {
         signingIn = false
@@ -211,11 +209,11 @@ export function createSync(opts: SyncOptions) {
 
   function scheduleRetry(tripId: Id, ch: Channel): void {
     if (closed || channels.get(tripId) !== ch || ch.retry) return
+    ch.pushFailures += 1
     ch.retry = setTimeout(() => {
       ch.retry = null
       void push(tripId)
-    }, ch.retryDelay)
-    ch.retryDelay = backoff(ch.retryDelay)
+    }, retryDelay(ch.pushFailures))
   }
 
   async function push(tripId: Id): Promise<void> {
@@ -248,7 +246,7 @@ export function createSync(opts: SyncOptions) {
     // transaction (and its billed read) entirely.
     const pre = decidePush(local, known, opts.deviceId, { rewrite: upgrade })
     if (pre.action === 'skip') {
-      ch.retryDelay = RETRY_MIN_MS
+      ch.pushFailures = 0
       status(tripId, 'live')
       return
     }
@@ -302,7 +300,7 @@ export function createSync(opts: SyncOptions) {
       if (outcome.kind === 'wrote') {
         stats.writes += 1
         ch.remote = outcome.wire
-        ch.retryDelay = RETRY_MIN_MS
+        ch.pushFailures = 0
         // The write may have merged in records that were already on the
         // server; hand those back to this phone as well.
         opts.replica.adopt(outcome.merged)
@@ -311,14 +309,16 @@ export function createSync(opts: SyncOptions) {
         status(tripId, refusalStatus(outcome.decision))
       } else if (outcome.kind === 'skip') {
         ch.remote = outcome.raw
-        ch.retryDelay = RETRY_MIN_MS
+        ch.pushFailures = 0
         status(tripId, 'live')
       }
     } catch (err) {
       const code = (err as { code?: string }).code ?? ''
-      // Everything is still safe locally. Try again by itself: see RETRY_MIN_MS.
-      status(tripId, code === 'unavailable' || isOffline() ? 'offline' : 'error')
-      scheduleRetry(tripId, ch)
+      // Everything is still safe locally. Try again by itself where trying
+      // can help; a used-up quota or a rules refusal waits for resume().
+      const verdict = classifyFailure(code, isOffline())
+      status(tripId, verdict.status)
+      if (verdict.retry) scheduleRetry(tripId, ch)
     } finally {
       ch.pushing = false
       if (ch.again) {
@@ -359,22 +359,25 @@ export function createSync(opts: SyncOptions) {
       doc(db, 'trips', tripId),
       (snap) => {
         stats.snapshots += 1
-        ch.listenDelay = RETRY_MIN_MS
+        ch.listenFailures = 0
         const raw = snap.exists() ? (snap.data().ledger as string) : null
         queue = queue.then(() => handle(raw)).catch(() => undefined)
       },
-      () => {
+      (err) => {
         // Firestore ends a listener for good after any error (a quota limit,
         // say). Left alone it stayed dead until the app was restarted, and
         // this phone stopped seeing anyone else's expenses.
-        status(tripId, isOffline() ? 'offline' : 'error')
+        const verdict = classifyFailure((err as { code?: string }).code ?? '', isOffline())
+        status(tripId, verdict.status)
         ch.unsubscribe = () => undefined
         if (closed || channels.get(tripId) !== ch) return
+        ch.listenFailures += 1
+        // A dead listener is always re-attached eventually, even for quota:
+        // the slow schedule makes that a handful of attempts a day.
         ch.relisten = setTimeout(() => {
           ch.relisten = null
           listen(tripId, ch)
-        }, ch.listenDelay)
-        ch.listenDelay = backoff(ch.listenDelay)
+        }, verdict.retry ? retryDelay(ch.listenFailures) : retryDelay(Number.POSITIVE_INFINITY))
       },
     )
   }
@@ -385,9 +388,9 @@ export function createSync(opts: SyncOptions) {
       unsubscribe: () => undefined,
       timer: null,
       retry: null,
-      retryDelay: RETRY_MIN_MS,
+      pushFailures: 0,
       relisten: null,
-      listenDelay: RETRY_MIN_MS,
+      listenFailures: 0,
       remote: null,
       pushing: false,
       again: false,
@@ -424,7 +427,7 @@ export function createSync(opts: SyncOptions) {
   function resume(): void {
     if (closed) return
     if (uid === null) {
-      signInDelay = RETRY_MIN_MS
+      signInFailures = 0
       signIn()
     }
     for (const [id, ch] of channels) {
@@ -432,7 +435,14 @@ export function createSync(opts: SyncOptions) {
         clearTimeout(ch.retry)
         ch.retry = null
       }
-      ch.retryDelay = RETRY_MIN_MS
+      ch.pushFailures = 0
+      // A listener waiting out a long delay is re-attached now as well.
+      if (ch.relisten) {
+        clearTimeout(ch.relisten)
+        ch.relisten = null
+        ch.listenFailures = 0
+        listen(id, ch)
+      }
       void push(id)
     }
   }

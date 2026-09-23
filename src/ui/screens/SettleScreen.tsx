@@ -6,6 +6,7 @@ import { formatMinor, formatMoney, parseAmount } from '../../domain/money'
 import { amountInWords } from '../../domain/words'
 import { Alert, AvatarPair, Empty, Money, NotFound, TopBar, firstName } from '../components'
 import { Icon } from '../icons'
+import { tap } from '../haptics'
 import { back } from '../router'
 import type { Id, Minor } from '../../domain/types'
 
@@ -100,6 +101,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                     <button
                       className="btn icon"
                       onClick={() => {
+                        tap()
                         addSettlement(tripId, {
                           fromMember: t.fromMember,
                           toMember: t.toMember,

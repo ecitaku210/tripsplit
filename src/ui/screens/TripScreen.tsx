@@ -25,7 +25,7 @@ import { navigate } from '../router'
 import { useToast } from '../toast'
 import { dayLabel } from '../dates'
 import { myLineOn } from '../expenseLines'
-import { categoryOf } from '../categories'
+import { CATEGORIES, OTHER, categoryColor, categoryOf, type Category } from '../categories'
 import type { Expense, Id, Trip } from '../../domain/types'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import type { SyncStatus } from '../../sync/engine'
@@ -62,6 +62,11 @@ const SYNC: Record<
     label: 'Locked',
     tone: 'bad',
     note: 'This trip is encrypted with a key this phone does not have. Ask someone on the trip to share it again, then import that code.',
+  },
+  quota: {
+    label: 'Daily limit',
+    tone: 'warn',
+    note: 'The free daily sync limit is used up. Saved on this phone; syncing resumes after the reset at 12:30 pm IST.',
   },
   error: {
     label: 'Sync problem',
@@ -507,6 +512,61 @@ function BalancesTab({ trip }: { trip: Trip }) {
         These numbers include every expense that has reached this phone. If someone has been
         offline, their latest expenses arrive when they reconnect.
       </p>
+
+      <SpendByCategory trip={trip} />
+    </div>
+  )
+}
+
+/**
+ * Where the money went, from the categories guessed off each description.
+ * A stacked bar and a short legend, largest first. Nothing is stored; every
+ * phone derives the same picture from the same descriptions.
+ */
+function SpendByCategory({ trip }: { trip: Trip }) {
+  const rows = useMemo(() => {
+    const sums = new Map<Category, number>()
+    let total = 0
+    for (const e of liveExpenses(trip)) {
+      const c = categoryOf(e.description)
+      sums.set(c, (sums.get(c) ?? 0) + e.amountMinor)
+      total += e.amountMinor
+    }
+    const order = [...CATEGORIES, OTHER]
+    return {
+      total,
+      items: [...sums.entries()]
+        .sort((a, b) => b[1] - a[1] || order.indexOf(a[0]) - order.indexOf(b[0]))
+        .map(([c, minor]) => ({ c, minor, pct: total ? Math.round((minor / total) * 100) : 0 })),
+    }
+  }, [trip])
+
+  if (rows.total === 0 || rows.items.length < 2) return null
+
+  return (
+    <div className="section" style={{ marginTop: 24 }}>
+      <h2>Where the money went</h2>
+      <div className="spend-bar" aria-hidden="true">
+        {rows.items.map(({ c, minor }) => (
+          <span
+            key={c.id}
+            style={{ width: `${(minor / rows.total) * 100}%`, background: categoryColor(c) }}
+          />
+        ))}
+      </div>
+      <div className="card">
+        {rows.items.map(({ c, minor, pct }) => (
+          <div key={c.id} className="spend-row">
+            <span className="swatch" style={{ background: categoryColor(c) }}>
+              <Icon name={c.icon} size={15} />
+            </span>
+            <span className="label">{c.label}</span>
+            <span className="pct num">{pct}%</span>
+            <Money amount={minor} currency={trip.currency} />
+          </div>
+        ))}
+      </div>
+      <p className="hint">Guessed from each expense&apos;s words. Rename an expense to move it.</p>
     </div>
   )
 }
