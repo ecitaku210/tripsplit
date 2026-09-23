@@ -31,8 +31,10 @@ export type IconName =
   | 'chevron'
   | 'sparkle'
   | 'wallet'
+  | 'lock'
 
 const PATHS: Record<IconName, string> = {
+  lock: 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z',
   plus: 'M12 5v14M5 12h14',
   back: 'M15 5l-7 7 7 7',
   arrow: 'M5 12h14M13 6l6 6-6 6',

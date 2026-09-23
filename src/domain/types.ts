@@ -101,6 +101,14 @@ export interface Trip extends Versioned {
 /** Bumped only when a change would break older replicas' ability to merge. */
 export const SCHEMA_VERSION = 1
 
+/**
+ * The schema an ENCRYPTED document claims on the wire. Deliberately above
+ * SCHEMA_VERSION: an app from before encryption decodes the envelope, sees a
+ * version it does not know, and stands down with "Update needed" instead of
+ * treating the ciphertext as garbage and overwriting it with plaintext.
+ */
+export const SEALED_SCHEMA = 2
+
 /** The unit of export/import: one or more whole trips. */
 export interface LedgerFile {
   kind: 'tripsplit.ledger'
@@ -108,6 +116,12 @@ export interface LedgerFile {
   exportedAt: number
   exportedBy: Id
   trips: Record<Id, Trip>
+  /**
+   * Encryption keys for the trips in this file, tripId -> key. Present only
+   * in files a PERSON shares (the code, the .json); never in what is written
+   * to the server, whose whole point is that it does not hold the key.
+   */
+  keys?: Record<Id, string>
 }
 
 /** Everything one device knows. Persisted locally, never transmitted whole. */
@@ -117,4 +131,11 @@ export interface Database {
   /** Which member in each trip this phone's owner is. tripId -> memberId. */
   identities: Record<Id, Id>
   trips: Record<Id, Trip>
+  /**
+   * End-to-end encryption keys, tripId -> key. A trip with a key is stored on
+   * the server as ciphertext only this phone and the phones it shared the
+   * code with can read. A trip without one (created before encryption
+   * existed) syncs as before until someone turns encryption on for it.
+   */
+  keys: Record<Id, string>
 }

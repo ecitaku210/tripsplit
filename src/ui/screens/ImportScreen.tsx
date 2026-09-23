@@ -35,7 +35,10 @@ export function ImportScreen({ payload }: { payload: string | null }) {
       setResult({ ok: false, message: decoded.message })
       return
     }
-    const summary = importTrips(decoded.file.trips, { restoreDeleted: true })
+    const summary = importTrips(decoded.file.trips, {
+      restoreDeleted: true,
+      ...(decoded.file.keys ? { keys: decoded.file.keys } : {}),
+    })
     const first = Object.keys(decoded.file.trips)[0]
     setResult({
       ok: true,
@@ -52,7 +55,10 @@ export function ImportScreen({ payload }: { payload: string | null }) {
         setResult({ ok: false, message: parsed.message })
         return
       }
-      const summary = importTrips(parsed.file.trips, { restoreDeleted: true })
+      const summary = importTrips(parsed.file.trips, {
+        restoreDeleted: true,
+        ...(parsed.file.keys ? { keys: parsed.file.keys } : {}),
+      })
       const first = Object.keys(parsed.file.trips)[0]
       setResult({
         ok: true,

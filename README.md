@@ -188,6 +188,27 @@ project; it grants nothing. What protects the data is `firestore.rules`, which:
 paste the file → Publish). CI tests the copy in this repository; it cannot see
 what is live, so after changing the file, publish it again.
 
+### End-to-end encryption
+
+Each trip has a random 256-bit key, minted on the phone that creates it. What
+Firestore stores is **AES-256-GCM ciphertext** of the gzipped ledger; the key
+lives only on the phones and travels **inside the share code**, so the code
+remains the one thing that grants access, and Google holds nothing readable.
+The trip id is bound in as associated data, so a ciphertext copied between
+documents fails to open.
+
+On the wire the encrypted document decodes as a ledger with `schema: 2` and a
+`sealed` payload. That number is deliberate: an app from before encryption
+reads it as "written by a newer version" and refuses to overwrite it (the bug
+F rule), instead of treating ciphertext as garbage and replacing it with its
+own plaintext. A current app without the key shows **Locked** and never
+writes; importing the latest code unlocks it.
+
+Trips created before encryption keep syncing in plaintext until someone taps
+**Turn on encryption** under Invite & share, then re-shares the code. What the
+encryption does not change: anyone holding the code can read and edit the
+trip, and the rules, not the key, decide who may write to the document.
+
 The built `index.html` also carries a **Content Security Policy**: scripts run
 only from the app's own bundle, and the page may talk only to Firestore and
 Firebase Auth. Should a dependency ever be compromised or an injection slip

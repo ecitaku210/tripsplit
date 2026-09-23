@@ -293,3 +293,56 @@ describe('a server copy from a newer app version (audit bug F)', () => {
     expect(decidePush(baseTrip(), 'not a ledger', 'dev0').action).toBe('write')
   })
 })
+
+describe('an encrypted server copy this phone cannot open', () => {
+  // The adapter opens ciphertext before calling the protocol. Whatever is
+  // still sealed when it gets here means "no key, or the wrong one".
+  async function sealedBlob(t: Trip) {
+    const { newTripKey, seal } = await import('./crypto')
+    return seal(blobOf(t), newTripKey(), t.id)
+  }
+
+  it('is never overwritten: a plaintext write would expose the whole group', async () => {
+    const t = baseTrip()
+    const mine = clone(t)
+    mine.expenses.x = makeExpense({ id: 'x', updatedBy: 'dev0', updatedAt: 5 })
+    const d = decidePush(mine, await sealedBlob(t), 'dev0')
+    expect(d).toEqual({ action: 'refuse', reason: 'locked' })
+  })
+
+  it('is not adopted either, and says why', async () => {
+    const t = baseTrip()
+    const p = decidePull(clone(t), await sealedBlob(t))
+    expect(p).toEqual({ action: 'ignore', reason: 'locked' })
+  })
+
+  it('CONTROL: once opened with the key, the same document syncs normally', async () => {
+    const { newTripKey, seal, open } = await import('./crypto')
+    const t = baseTrip()
+    const key = newTripKey()
+    const sealed = await seal(blobOf(t), key, t.id)
+    const opened = await open(sealed, key, t.id)
+    const mine = clone(t)
+    mine.expenses.x = makeExpense({ id: 'x', updatedBy: 'dev0', updatedAt: 5 })
+    expect(decidePush(mine, opened, 'dev0').action).toBe('write')
+  })
+})
+
+describe('rewrite: replacing a plaintext server copy after a key is turned on', () => {
+  it('writes identical content when asked to, and skips it otherwise', () => {
+    const t = baseTrip()
+    const blob = blobOf(t)
+    expect(decidePush(clone(t), blob, 'dev0').action).toBe('skip')
+    const d = decidePush(clone(t), blob, 'dev0', { rewrite: true })
+    expect(d.action).toBe('write')
+    // Still merges the server copy in, so nothing is lost by the rewrite.
+    expect(d.action === 'write' && fingerprint(d.merged)).toBe(fingerprint(t))
+  })
+
+  it('never rewrites over a newer version or a sealed copy', async () => {
+    const { newTripKey, seal } = await import('./crypto')
+    const t = baseTrip()
+    const sealed = await seal(blobOf(t), newTripKey(), t.id)
+    expect(decidePush(clone(t), sealed, 'dev0', { rewrite: true }).action).toBe('refuse')
+  })
+})

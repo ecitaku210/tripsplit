@@ -26,6 +26,7 @@ import {
   type MergeSummary,
 } from '../domain/merge'
 import { loadDatabase, newId, saveDatabase, storageUsage, type StorageUsage } from './db'
+import { newTripKey } from '../sync/crypto'
 
 /**
  * Single source of truth for the app.
@@ -65,8 +66,21 @@ interface StoreValue {
   /**
    * Merge trips in. `restoreDeleted` is for imports a person starts: it
    * brings back a trip they had deleted on this phone. Sync never sets it.
+   * `keys` are the encryption keys carried by a shared file; a key in the
+   * file replaces the one held, because the person importing chose that
+   * code as the current one.
    */
-  importTrips(trips: Record<Id, Trip>, opts?: { restoreDeleted?: boolean }): MergeSummary
+  importTrips(
+    trips: Record<Id, Trip>,
+    opts?: { restoreDeleted?: boolean; keys?: Record<Id, string> },
+  ): MergeSummary
+
+  /**
+   * Turn on end-to-end encryption for a trip created before it existed. From
+   * the next sync the server holds ciphertext; everyone else needs the new
+   * share code, which carries the key.
+   */
+  encryptTrip(tripId: Id): void
 }
 
 export interface ExpenseDraft {
@@ -157,10 +171,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           expenses: {},
           settlements: {},
         }
+        // Encrypted from the first write: the key is minted with the trip.
+        const key = newTripKey()
         setDb((prev) => ({
           ...prev,
           trips: { ...prev.trips, [tripId]: trip },
           identities: { ...prev.identities, [tripId]: memberId },
+          keys: { ...prev.keys, [tripId]: key },
         }))
         return tripId
       },
@@ -315,7 +332,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
       },
 
-      importTrips(incoming, { restoreDeleted = false } = {}) {
+      encryptTrip(tripId) {
+        setDb((prev) => {
+          if (!prev.trips[tripId] || prev.keys[tripId]) return prev
+          return { ...prev, keys: { ...prev.keys, [tripId]: newTripKey() } }
+        })
+      },
+
+      importTrips(incoming, { restoreDeleted = false, keys } = {}) {
         const prepare = (trips: Record<Id, Trip>) =>
           restoreDeleted ? restoreDeletedTrips(trips, incoming) : trips
         // Merged once and reused for both the summary and the new state.
@@ -331,6 +355,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // merge against what is actually current rather than clobbering it.
           trips:
             prev.trips === db.trips ? merged : mergeTripMaps(prepare(prev.trips), incoming),
+          keys: keys ? { ...prev.keys, ...keys } : prev.keys,
         }))
         return summary
       },

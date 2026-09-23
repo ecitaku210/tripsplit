@@ -56,6 +56,11 @@ const SYNC: Record<
     tone: 'bad',
     note: 'Someone saved this trip with a newer version. Close the app fully and open it again.',
   },
+  locked: {
+    label: 'Locked',
+    tone: 'bad',
+    note: 'This trip is encrypted with a key this phone does not have. Ask someone on the trip to share it again, then import that code.',
+  },
   error: {
     label: 'Sync problem',
     tone: 'bad',
@@ -155,7 +160,8 @@ function BalanceHero({
   me: Id | undefined
   sync: SyncStatus | null
 }) {
-  const { setMyself } = useStore()
+  const { db, setMyself } = useStore()
+  const encrypted = !!db.keys[trip.id]
   const totals = useMemo(() => computeTotals(trip), [trip])
   const members = liveMembers(trip)
   const mine = me ? totals.balances.find((b) => b.memberId === me) : undefined
@@ -213,6 +219,11 @@ function BalanceHero({
         <div className="left">
           <AvatarStack members={members} />
           <span>{countOf(members.length, 'person', 'people')}</span>
+          {encrypted && (
+            <span className="lock" title="End-to-end encrypted">
+              <Icon name="lock" size={13} />
+            </span>
+          )}
         </div>
         <span className="num right">
           <strong>{formatMoney(totals.totalSpentMinor, trip.currency)}</strong> spent

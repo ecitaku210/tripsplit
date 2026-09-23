@@ -63,7 +63,7 @@ export function getDeviceId(): Id {
 }
 
 export function emptyDatabase(): Database {
-  return { schema: SCHEMA_VERSION, deviceId: getDeviceId(), identities: {}, trips: {} }
+  return { schema: SCHEMA_VERSION, deviceId: getDeviceId(), identities: {}, trips: {}, keys: {} }
 }
 
 export function loadDatabase(): Database {
@@ -76,6 +76,8 @@ export function loadDatabase(): Database {
       deviceId: getDeviceId(),
       identities: typeof parsed.identities === 'object' && parsed.identities ? parsed.identities : {},
       trips: typeof parsed.trips === 'object' && parsed.trips ? parsed.trips : {},
+      // Absent on databases written before encryption existed.
+      keys: typeof parsed.keys === 'object' && parsed.keys ? parsed.keys : {},
     }
   } catch {
     // A corrupt blob is kept under a side key rather than overwritten, so a

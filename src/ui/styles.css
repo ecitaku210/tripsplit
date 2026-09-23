@@ -525,6 +525,28 @@ body {
   white-space: nowrap;
 }
 
+.hero .foot .lock {
+  display: inline-flex;
+  align-items: center;
+  color: var(--positive);
+  opacity: 0.85;
+}
+
+/* A button that reads as a link inside a sentence. */
+.btn.link,
+button.link {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* ---------- pills ---------- */
 
 .pill {

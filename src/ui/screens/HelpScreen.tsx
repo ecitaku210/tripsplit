@@ -157,7 +157,9 @@ export function HelpScreen() {
               <strong>Live</strong>: in step with everyone. <strong>Saving…</strong>: sending your
               change. <strong>Offline</strong>: no signal; everything is saved on your phone and
               goes up when signal returns. <strong>Sync problem</strong>: the app keeps retrying by
-              itself. <strong>Update needed</strong>: close the app fully and open it again.
+              itself. <strong>Update needed</strong>: close the app fully and open it again.{' '}
+              <strong>Locked</strong>: the trip is encrypted and this phone lacks the key; ask
+              someone on the trip for the code again and import it.
             </p>
           </Q>
           <Q q="Does it sync when the app is closed?">
@@ -241,10 +243,20 @@ export function HelpScreen() {
           <h2>Privacy</h2>
           <Q q="Where is the data stored, and who can see it?">
             <p>
-              On each phone and in Google Firebase, so phones can stay in step. A trip&apos;s code
+              On each phone and in Google Firebase, so phones can stay in step. Trips are{' '}
+              <strong>end-to-end encrypted</strong>: Firebase holds scrambled text and the key
+              lives only on the phones, inside the trip&apos;s code. A trip&apos;s code therefore
               works like a <strong>password</strong>: anyone who has it can see and edit that trip,
-              and nobody else can find it. Share it only with the people on the trip. There are no
-              accounts or logins.
+              and nobody else can, Google included. Share it only with the people on the trip.
+              There are no accounts or logins.
+            </p>
+          </Q>
+          <Q q='My trip says "Not encrypted yet"'>
+            <p>
+              It was created before encryption existed. Under <strong>Invite &amp; share</strong>,
+              tap <strong>Turn on encryption</strong>. Do it when everyone has opened the app that
+              day, then send them the new code; their phones show <strong>Locked</strong> until they
+              import it. New trips are encrypted from the start.
             </p>
           </Q>
         </div>

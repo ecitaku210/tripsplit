@@ -9,7 +9,7 @@ import type {
   SplitMode,
   Trip,
 } from './types'
-import { SCHEMA_VERSION } from './types'
+import { SEALED_SCHEMA, SCHEMA_VERSION } from './types'
 import { isValidMinor } from './money'
 import { stableStringify } from './merge'
 
@@ -45,7 +45,35 @@ export interface ParseFailure {
    * must treat that differently from garbage: garbage may be replaced, but
    * newer data must never be overwritten by an older phone that cannot read it.
    */
-  reason?: 'newer-version'
+  reason?: 'newer-version' | 'sealed'
+  /** With reason 'sealed': the ciphertext envelope, for whoever holds the key. */
+  sealed?: Sealed
+}
+
+/**
+ * An end-to-end encrypted ledger as it sits on the server: AES-256-GCM over
+ * the gzipped ledger bytes, with the trip id as associated data so a
+ * ciphertext cannot be moved from one trip's document to another's.
+ * `iv` and `ct` are base64url. The server never sees a key.
+ */
+export interface Sealed {
+  v: 1
+  iv: string
+  ct: string
+}
+
+/** A trip key: 32 random bytes as base64url, so 43 characters. */
+export function isTripKey(v: unknown): v is string {
+  return typeof v === 'string' && /^[A-Za-z0-9_-]{43}$/.test(v)
+}
+
+function parseSealed(v: unknown): Sealed | null {
+  if (typeof v !== 'object' || v === null) return null
+  const o = v as Record<string, unknown>
+  if (o.v !== 1) return null
+  if (typeof o.iv !== 'string' || !/^[A-Za-z0-9_-]{16}$/.test(o.iv)) return null
+  if (typeof o.ct !== 'string' || !/^[A-Za-z0-9_-]{22,}$/.test(o.ct)) return null
+  return { v: 1, iv: o.iv, ct: o.ct }
 }
 
 function str(v: unknown, max = 500): string | null {
@@ -292,6 +320,20 @@ export function parseLedger(raw: unknown): ParseResult | ParseFailure {
   if (typeof schema !== 'number' || !Number.isInteger(schema)) {
     return { ok: false, message: 'Ledger is missing a version number.' }
   }
+  // Checked BEFORE the version: a sealed envelope claims SEALED_SCHEMA on
+  // purpose, so that an app from before encryption refuses to touch it.
+  // This app knows what it is, and hands it to whoever holds the key.
+  if (schema === SEALED_SCHEMA && 'sealed' in o) {
+    const sealed = parseSealed(o.sealed)
+    if (!sealed) return { ok: false, message: 'That encrypted ledger is damaged.' }
+    return {
+      ok: false,
+      reason: 'sealed',
+      sealed,
+      message:
+        'This trip is end-to-end encrypted. Import the latest code from someone on the trip to unlock it.',
+    }
+  }
   if (schema > SCHEMA_VERSION) {
     return {
       ok: false,
@@ -315,6 +357,15 @@ export function parseLedger(raw: unknown): ParseResult | ParseFailure {
     return { ok: false, message: 'No readable trips in that file.' }
   }
 
+  // Keys travel with a shared file, one per trip in it. Anything not a
+  // well-formed key, or for a trip that is not in the file, is dropped.
+  const keys: Record<Id, string> = {}
+  if (typeof o.keys === 'object' && o.keys !== null) {
+    for (const [tripId, key] of Object.entries(o.keys as Record<string, unknown>)) {
+      if (trips[tripId] && isTripKey(key) && !UNSAFE_KEYS.has(tripId)) keys[tripId] = key
+    }
+  }
+
   return {
     ok: true,
     warnings,
@@ -324,6 +375,7 @@ export function parseLedger(raw: unknown): ParseResult | ParseFailure {
       exportedAt: ts(o.exportedAt) ?? Date.now(),
       exportedBy: id(o.exportedBy) ?? 'unknown',
       trips,
+      ...(Object.keys(keys).length > 0 ? { keys } : {}),
     },
   }
 }
@@ -336,7 +388,7 @@ export function parseLedger(raw: unknown): ParseResult | ParseFailure {
  * base64url rather than plain base64 so the payload survives being pasted
  * into a URL fragment without `+`, `/` or `=` being mangled.
  */
-function toBase64Url(bytes: Uint8Array): string {
+export function toBase64Url(bytes: Uint8Array): string {
   let binary = ''
   const CHUNK = 0x8000 // avoid blowing the argument limit on large ledgers
   for (let i = 0; i < bytes.length; i += CHUNK) {
@@ -345,7 +397,7 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-function fromBase64Url(text: string): Uint8Array {
+export function fromBase64Url(text: string): Uint8Array {
   const normalised = text.replace(/-/g, '+').replace(/_/g, '/')
   const padded = normalised + '='.repeat((4 - (normalised.length % 4)) % 4)
   const binary = atob(padded)
@@ -415,14 +467,34 @@ export function normaliseTrip(trip: Trip): Trip | null {
   return parseTrip(JSON.parse(JSON.stringify(trip)), [])
 }
 
-export function buildLedgerFile(trips: Record<Id, Trip>, deviceId: Id): LedgerFile {
+/**
+ * `keys` belong ONLY in files a person shares. The server-bound ledger is
+ * built without them; the whole point of the key is that the server never
+ * holds it.
+ */
+export function buildLedgerFile(
+  trips: Record<Id, Trip>,
+  deviceId: Id,
+  keys?: Record<Id, string>,
+): LedgerFile {
+  const carried: Record<Id, string> = {}
+  for (const [tripId, key] of Object.entries(keys ?? {})) {
+    if (trips[tripId] && isTripKey(key)) carried[tripId] = key
+  }
   return {
     kind: 'tripsplit.ledger',
     schema: SCHEMA_VERSION,
     exportedAt: Date.now(),
     exportedBy: deviceId,
     trips,
+    ...(Object.keys(carried).length > 0 ? { keys: carried } : {}),
   }
+}
+
+/** The wire form of a sealed envelope: same transport encoding as a ledger. */
+export function encodeSealed(sealed: Sealed): string {
+  const json = JSON.stringify({ kind: 'tripsplit.ledger', schema: SEALED_SCHEMA, sealed })
+  return toBase64Url(gzipSync(strToU8(json), { level: 9 }))
 }
 
 /**

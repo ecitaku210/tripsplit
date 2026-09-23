@@ -52,6 +52,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
             const t = storeRef.current.db.trips[id]
             return t && t.deletedAt === null ? t : null
           },
+          // Read live, not captured: a key arrives when a code is imported,
+          // and the next push must use it.
+          key: (id: Id): string | null => storeRef.current.db.keys[id] ?? null,
           adopt: (trip: Trip) => {
             storeRef.current.importTrips({ [trip.id]: trip })
           },
@@ -66,9 +69,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Watch every live trip; push whichever trip object changed identity.
+  // Watch every live trip; push whichever trip object changed identity, or
+  // whose key changed (encryption turned on, or a new code imported).
   const seen = useRef<Record<Id, Trip>>({})
+  const seenKeys = useRef<Record<Id, string | undefined>>({})
   const trips = store.db.trips
+  const keys = store.db.keys
   useEffect(() => {
     if (!engine) return
     const next: Record<Id, Trip> = {}
@@ -76,11 +82,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       if (trip.deletedAt !== null) continue
       next[id] = trip
       if (!seen.current[id]) engine.watch(id)
-      else if (seen.current[id] !== trip) engine.changed(id)
+      else if (seen.current[id] !== trip || seenKeys.current[id] !== keys[id]) engine.changed(id)
+      seenKeys.current[id] = keys[id]
     }
     for (const id of Object.keys(seen.current)) if (!next[id]) engine.unwatch(id)
     seen.current = next
-  }, [engine, trips])
+  }, [engine, trips, keys])
 
   // Back online, or back on screen: push anything that piled up. Phones
   // freeze a backgrounded app's timers, so returning to it is the moment a

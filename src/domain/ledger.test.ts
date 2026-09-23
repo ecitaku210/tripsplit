@@ -10,7 +10,7 @@ import {
 } from './ledger'
 import { makeExpense, makeMember, makeTrip, randomTrip } from './testkit'
 import { parseAmount, formatMinor, formatMoney } from './money'
-import { SCHEMA_VERSION } from './types'
+import { SCHEMA_VERSION, SEALED_SCHEMA } from './types'
 
 describe('parseAmount', () => {
   it.each([
@@ -334,5 +334,70 @@ describe('audit fixes', () => {
     const newer = parseLedger({ ...buildLedgerFile({ [t.id]: t }, 'x'), schema: SCHEMA_VERSION + 1 })
     expect(newer).toMatchObject({ ok: false, reason: 'newer-version' })
     expect(parseLedger({ kind: 'nope' })).not.toHaveProperty('reason')
+  })
+})
+
+describe('encryption keys in a shared file', () => {
+  const KEY = 'A'.repeat(43)
+  const trip = () => makeTrip('trip-0001', [makeMember('m1', 'Asha')])
+
+  it('are carried by buildLedgerFile only for trips in the file', () => {
+    const file = buildLedgerFile({ 'trip-0001': trip() }, 'dev', {
+      'trip-0001': KEY,
+      'trip-9999': 'B'.repeat(43),
+    })
+    expect(file.keys).toEqual({ 'trip-0001': KEY })
+  })
+
+  it('are omitted entirely when there are none, so the server-bound ledger has no keys field', () => {
+    const file = buildLedgerFile({ 'trip-0001': trip() }, 'dev')
+    expect('keys' in file).toBe(false)
+    expect(JSON.stringify(file)).not.toContain('keys')
+  })
+
+  it('survive encode and decode', () => {
+    const code = encodeLedger(buildLedgerFile({ 'trip-0001': trip() }, 'dev', { 'trip-0001': KEY }))
+    const d = decodeLedger(code)
+    expect(d.ok && d.file.keys).toEqual({ 'trip-0001': KEY })
+  })
+
+  it('drops malformed keys and keys for trips not in the file', () => {
+    const raw = JSON.parse(JSON.stringify(buildLedgerFile({ 'trip-0001': trip() }, 'dev'))) as Record<
+      string,
+      unknown
+    >
+    raw.keys = { 'trip-0001': 'too-short', 'trip-9999': KEY, __proto__: KEY }
+    const d = parseLedger(raw)
+    expect(d.ok && d.file.keys).toBeUndefined()
+  })
+})
+
+describe('a sealed envelope', () => {
+  const envelope = (sealed: unknown) =>
+    encodeLedger({ kind: 'tripsplit.ledger', schema: SEALED_SCHEMA, sealed } as never)
+
+  it('decodes as sealed, with its payload, for whoever holds the key', () => {
+    const d = decodeLedger(envelope({ v: 1, iv: 'A'.repeat(16), ct: 'B'.repeat(40) }))
+    expect(!d.ok && d.reason).toBe('sealed')
+    expect(!d.ok && d.sealed).toEqual({ v: 1, iv: 'A'.repeat(16), ct: 'B'.repeat(40) })
+  })
+
+  it('is refused as damaged when the payload is malformed', () => {
+    for (const bad of [{ v: 2, iv: 'A'.repeat(16), ct: 'B'.repeat(40) }, { v: 1, iv: 'short', ct: 'B'.repeat(40) }, { v: 1, iv: 'A'.repeat(16), ct: 'x' }, 'nope']) {
+      const d = decodeLedger(envelope(bad))
+      expect(d.ok).toBe(false)
+      expect(!d.ok && d.reason).toBeUndefined()
+    }
+  })
+
+  it('is never mistaken for a plaintext ledger even with trips alongside', () => {
+    const raw = {
+      kind: 'tripsplit.ledger',
+      schema: SEALED_SCHEMA,
+      sealed: { v: 1, iv: 'A'.repeat(16), ct: 'B'.repeat(40) },
+      trips: { 'trip-0001': makeTrip('trip-0001', [makeMember('m1', 'Asha')]) },
+    }
+    const d = parseLedger(raw)
+    expect(!d.ok && d.reason).toBe('sealed')
   })
 })
