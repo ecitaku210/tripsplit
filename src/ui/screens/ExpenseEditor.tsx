@@ -7,6 +7,8 @@ import { isIsoDate } from '../../domain/ledger'
 import { Avatar, Field, Money, NotFound, Segmented, TopBar } from '../components'
 import { Icon } from '../icons'
 import { back, navigate } from '../router'
+import { useToast } from '../toast'
+import { useSyncStatus } from '../../sync/SyncProvider'
 import type { Id, SplitMode } from '../../domain/types'
 
 const MODE_OPTIONS: { value: SplitMode; label: string }[] = [
@@ -18,7 +20,9 @@ const MODE_OPTIONS: { value: SplitMode; label: string }[] = [
 
 export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id | null }) {
   const trip = useTrip(tripId)
-  const { db, saveExpense, deleteExpense } = useStore()
+  const { db, saveExpense, deleteExpense, restoreExpense } = useStore()
+  const { show: toast } = useToast()
+  const sync = useSyncStatus(tripId)
   const existing = expenseId && trip ? trip.expenses[expenseId] : undefined
   const decimals = trip?.currency.decimals ?? 2
 
@@ -160,6 +164,15 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
       note: note.trim(),
     })
     navigate(`/trip/${tripId}`)
+    // Says where the data is, in one line. "Saved" alone leaves the person
+    // wondering whether their friends have it yet.
+    const reach =
+      sync === 'live' || sync === 'saving'
+        ? 'Everyone sees it in a moment.'
+        : sync === 'offline'
+          ? 'Uploads when signal returns.'
+          : ''
+    toast(`${existing ? 'Changes saved' : 'Expense saved'}${reach ? `. ${reach}` : ''}`)
   }
 
   /**
@@ -355,10 +368,13 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
               onClick={() => {
                 // A tombstone, not a removal — see merge.ts. Deleting the
                 // record outright would let a friend's stale file resurrect it.
-                if (confirm('Delete this expense? Everyone you sync with will see it removed.')) {
-                  deleteExpense(tripId, existing.id)
-                  navigate(`/trip/${tripId}`)
-                }
+                // No "are you sure?": the toast carries Undo instead.
+                const id = existing.id
+                deleteExpense(tripId, id)
+                navigate(`/trip/${tripId}`)
+                toast(`Deleted ${existing.description || 'expense'}`, {
+                  action: { label: 'Undo', onClick: () => restoreExpense(tripId, id) },
+                })
               }}
             >
               <Icon name="trash" size={18} />

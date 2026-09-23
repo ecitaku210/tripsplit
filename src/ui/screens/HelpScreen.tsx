@@ -144,6 +144,8 @@ export function HelpScreen() {
             <p>
               Tap the expense, change it, tap <strong>Save</strong>. To remove it, tap{' '}
               <strong>Delete expense</strong> at the bottom. Everyone gets the change by itself.
+              Deleted by mistake? Tap <strong>Undo</strong> on the message at the bottom within a
+              few seconds. That works for removed people and repayments too.
             </p>
           </Q>
         </div>

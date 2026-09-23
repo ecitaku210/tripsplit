@@ -52,30 +52,48 @@ export function parseAmount(input: string, decimals: number): Minor | null {
 }
 
 /**
- * Insert thousands separators. Done by hand rather than with
+ * How digits are grouped for reading. `thousand` is 1,234,567; `lakh` is the
+ * Indian system, 12,34,567: the last three digits, then pairs. To someone who
+ * thinks in lakhs and crores, "₹150,000" takes a beat to read and
+ * "₹1,50,000" does not.
+ */
+export type Grouping = 'thousand' | 'lakh'
+
+/** Currencies whose users read amounts in lakhs. Display only; never stored. */
+export function groupingFor(currency: Currency): Grouping {
+  return currency.code === 'INR' ? 'lakh' : 'thousand'
+}
+
+/**
+ * Insert group separators. Done by hand rather than with
  * `toLocaleString` on purpose: that follows the *device* locale, so a German
  * phone would render 1200.50 as "1.200" + "." + "50" = "1.200.50". Worse,
  * `parseAmount` expects `,` grouping and a `.` decimal point, so a
  * locale-formatted string would not survive a round trip. A shared ledger
  * has to read the same on every phone in the group.
  */
-function group(digits: string): string {
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+function group(digits: string, grouping: Grouping): string {
+  if (grouping === 'thousand' || digits.length <= 3) {
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+  const last3 = digits.slice(-3)
+  const head = digits.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',')
+  return `${head},${last3}`
 }
 
 /** Render minor units as a plain decimal string, no symbol. `1235` -> `12.35`. */
-export function formatMinor(amount: Minor, decimals: number): string {
+export function formatMinor(amount: Minor, decimals: number, grouping: Grouping = 'thousand'): string {
   const sign = amount < 0 ? '-' : ''
   const abs = Math.abs(amount).toString().padStart(decimals + 1, '0')
-  if (decimals === 0) return sign + group(abs)
+  if (decimals === 0) return sign + group(abs, grouping)
   const whole = abs.slice(0, -decimals)
   const frac = abs.slice(-decimals)
-  return `${sign}${group(whole)}.${frac}`
+  return `${sign}${group(whole, grouping)}.${frac}`
 }
 
-/** Render with the trip's symbol, e.g. `₹1,234.50`. */
+/** Render with the trip's symbol, e.g. `₹1,234.50` or `₹1,50,000.00`. */
 export function formatMoney(amount: Minor, currency: Currency): string {
-  const body = formatMinor(Math.abs(amount), currency.decimals)
+  const body = formatMinor(Math.abs(amount), currency.decimals, groupingFor(currency))
   return `${amount < 0 ? '-' : ''}${currency.symbol}${body}`
 }
 

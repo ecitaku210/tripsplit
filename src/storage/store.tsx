@@ -45,17 +45,22 @@ interface StoreValue {
   createTrip(name: string, currency: Currency, myName: string): Id
   renameTrip(tripId: Id, name: string): void
   deleteTrip(tripId: Id): void
+  /** Undo a delete on this phone. Only meaningful right after deleteTrip. */
+  restoreTrip(tripId: Id): void
 
   addMember(tripId: Id, name: string): Id
   renameMember(tripId: Id, memberId: Id, name: string): void
   removeMember(tripId: Id, memberId: Id): void
+  restoreMember(tripId: Id, memberId: Id): void
   setMyself(tripId: Id, memberId: Id): void
 
   saveExpense(tripId: Id, draft: ExpenseDraft): void
   deleteExpense(tripId: Id, expenseId: Id): void
+  restoreExpense(tripId: Id, expenseId: Id): void
 
   addSettlement(tripId: Id, s: SettlementDraft): void
   deleteSettlement(tripId: Id, settlementId: Id): void
+  restoreSettlement(tripId: Id, settlementId: Id): void
 
   /**
    * Merge trips in. `restoreDeleted` is for imports a person starts: it
@@ -173,6 +178,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }))
       },
 
+      /*
+       * Restores are the Undo behind a delete. Clearing the tombstone with a
+       * fresh stamp is a newer version of the record, so it wins the merge on
+       * every phone, including any that already received the delete.
+       */
+      restoreTrip(tripId) {
+        editTrip(tripId, (trip) => (trip.deletedAt === null ? trip : { ...trip, ...stamp() }))
+      },
+
       addMember(tripId, name) {
         const memberId = newId()
         editTrip(tripId, (trip) => ({
@@ -215,6 +229,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
       },
 
+      restoreMember(tripId, memberId) {
+        editTrip(tripId, (trip) => {
+          const member = trip.members[memberId]
+          if (!member || member.deletedAt === null) return trip
+          return { ...trip, members: { ...trip.members, [memberId]: { ...member, ...stamp() } } }
+        })
+      },
+
       setMyself(tripId, memberId) {
         setDb((prev) => ({ ...prev, identities: { ...prev.identities, [tripId]: memberId } }))
       },
@@ -254,6 +276,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
       },
 
+      restoreExpense(tripId, expenseId) {
+        editTrip(tripId, (trip) => {
+          const expense = trip.expenses[expenseId]
+          if (!expense || expense.deletedAt === null) return trip
+          return { ...trip, expenses: { ...trip.expenses, [expenseId]: { ...expense, ...stamp() } } }
+        })
+      },
+
       addSettlement(tripId, draft) {
         const id = newId()
         editTrip(tripId, (trip) => {
@@ -274,6 +304,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               [settlementId]: { ...s, updatedAt: now, updatedBy: db.deviceId, deletedAt: now },
             },
           }
+        })
+      },
+
+      restoreSettlement(tripId, settlementId) {
+        editTrip(tripId, (trip) => {
+          const s = trip.settlements[settlementId]
+          if (!s || s.deletedAt === null) return trip
+          return { ...trip, settlements: { ...trip.settlements, [settlementId]: { ...s, ...stamp() } } }
         })
       },
 
