@@ -121,6 +121,13 @@ export function HelpScreen() {
               </li>
             </ol>
             <p>
+              If <strong>Save</strong> does not save, something is missing. The form scrolls to
+              the box that needs filling and marks it in red. The commonest slip is writing what
+              the expense was for in the <strong>Note</strong> box at the bottom instead of the{' '}
+              <strong>What was it for?</strong> box near the top; a one-tap{' '}
+              <strong>Use your note</strong> button moves the words up.
+            </p>
+            <p>
               <strong>The person who paid is the one who adds it.</strong> If two people both add
               the same dinner, you get two dinners.
             </p>

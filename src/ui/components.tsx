@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { Currency, Member, Minor } from '../domain/types'
 import { formatMoney } from '../domain/money'
 import { back } from './router'
@@ -253,16 +253,36 @@ export function Pill({
 export function Field({
   label,
   hint,
+  error,
+  anchor,
+  actions,
   children,
 }: {
   label: string
   hint?: string
+  /**
+   * What is wrong with THIS field, shown directly under it in red. A message
+   * at the foot of a long form names a box the person then has to hunt for;
+   * under the box, it needs no hunting.
+   */
+  error?: string | null
+  /** Lets the form scroll this field into view when Save is refused. */
+  anchor?: RefObject<HTMLDivElement>
+  /** Rendered after the error: a one-tap way out of it, when there is one. */
+  actions?: ReactNode
   children: ReactNode
 }) {
   return (
-    <div className="field">
+    <div className={`field${error ? ' invalid' : ''}`} ref={anchor}>
       <label>{label}</label>
       {children}
+      {error && (
+        <p className="field-error" role="alert">
+          <Icon name="alert" size={14} />
+          {error}
+        </p>
+      )}
+      {actions}
       {hint && <p className="hint">{hint}</p>}
     </div>
   )

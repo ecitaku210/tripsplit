@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, type RefObject } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { evaluateAmount, formatMinor, formatMoney, parseAmount } from '../../domain/money'
@@ -11,6 +11,7 @@ import { useToast } from '../toast'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import { CATEGORIES } from '../categories'
 import { tap } from '../haptics'
+import { firstProblem, type ProblemField } from '../expenseProblems'
 import { liveExpenses, liveMembers } from '../../domain/balance'
 import type { Id, SplitMode } from '../../domain/types'
 
@@ -81,6 +82,16 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
   const [note, setNote] = useState(existing?.note ?? '')
   const [touched, setTouched] = useState(false)
 
+  // One anchor per field that can be wrong, so a refused Save can scroll to
+  // the culprit instead of complaining from the foot of the page.
+  const anchors: Record<ProblemField, RefObject<HTMLDivElement>> = {
+    amount: useRef<HTMLDivElement>(null),
+    description: useRef<HTMLDivElement>(null),
+    paidBy: useRef<HTMLDivElement>(null),
+    date: useRef<HTMLDivElement>(null),
+    split: useRef<HTMLDivElement>(null),
+  }
+
   const [included, setIncluded] = useState<Set<Id>>(
     () =>
       new Set(existing ? existing.parts.map((p) => p.memberId) : members.map((m) => m.id)),
@@ -134,26 +145,17 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
   // deleted, must say so rather than silently opening a blank "new expense".
   if (expenseId && !existing) return <NotFound what="expense" />
 
-  const problem =
-    amountText.trim() === ''
-      ? 'Enter an amount.'
-      : amountMinor === null
-        ? `That is not an amount this currency can hold (max ${decimals} decimal places). Sums like 1200+340 are fine.`
-        : amountMinor <= 0
-          ? 'Amount must be more than zero.'
-          : split && !split.ok
-            ? split.message
-            : description.trim() === ''
-              ? 'Add a short description so everyone knows what this was.'
-              : // The date picker's Clear button leaves "". Other phones reject
-                // that, so the expense would silently never reach them.
-                !isIsoDate(date)
-                ? 'Pick a date.'
-                : members.length === 0
-                ? 'Add someone to the trip before logging an expense.'
-                : paidBy === ''
-                  ? 'Pick who paid.'
-                  : null
+  const problem = firstProblem({
+    amountText,
+    amountMinor,
+    decimals,
+    description,
+    hasNote: note.trim() !== '',
+    paidBy,
+    memberCount: members.length,
+    dateOk: isIsoDate(date),
+    split: split === null ? null : split.ok ? { ok: true } : { ok: false, message: split.message },
+  })
 
   const canSave = problem === null
   /** Where this form was opened from, for back and cancel. */
@@ -165,9 +167,33 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
    * or immediately when editing an expense that is already broken.
    */
   const showProblem = problem !== null && (touched || existing !== undefined)
+  /** The message for one field, or nothing: only the first problem shows. */
+  const errorAt = (at: ProblemField) => (showProblem && problem.at === at ? problem.message : null)
+
+  /**
+   * Save is never a dead button. Tapped while something is missing, it
+   * takes the person to the missing thing: the field scrolls to the middle
+   * of the screen and, where it is a text box, gets the cursor. A disabled
+   * button that swallows the tap is how a friend ends up typing the
+   * description into the note box and giving up.
+   */
+  function jumpToProblem() {
+    if (!problem) return
+    setTouched(true)
+    const el = anchors[problem.at].current
+    if (!el) return
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ block: 'center', behavior: still ? 'auto' : 'smooth' })
+    const box = el.querySelector<HTMLElement>('input:not([type=checkbox]), textarea')
+    box?.focus({ preventScroll: true })
+    tap()
+  }
 
   function save() {
-    if (!canSave || amountMinor === null) return
+    if (!canSave || amountMinor === null) {
+      jumpToProblem()
+      return
+    }
     saveExpense(tripId, {
       ...(expenseId ? { id: expenseId } : {}),
       description: description.trim(),
@@ -212,7 +238,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
         backLabel={existing ? existing.description || 'Expense' : trip.name}
       />
       <div className="content no-fab">
-        <Field label={`Amount (${trip.currency.code})`}>
+        <Field label={`Amount (${trip.currency.code})`} error={errorAt('amount')} anchor={anchors.amount}>
           <div className="amount-wrap">
           <span className="sym" aria-hidden="true">{trip.currency.symbol.trim()}</span>
           <input
@@ -223,6 +249,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
             autoFocus={!existing}
             value={amountText}
             placeholder="0"
+            aria-invalid={errorAt('amount') !== null}
             onChange={(e) => {
               setAmountText(e.target.value)
               setTouched(true)
@@ -244,7 +271,30 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           )}
         </Field>
 
-        <Field label="What was it for?">
+        <Field
+          label="What was it for?"
+          error={errorAt('description')}
+          anchor={anchors.description}
+          // The slip this rescues: the description typed into the note box,
+          // this box left empty. One tap moves the words up here.
+          actions={
+            errorAt('description') !== null &&
+            note.trim() !== '' && (
+              <button
+                type="button"
+                className="chip pick last"
+                onClick={() => {
+                  setDescription(note.trim())
+                  setNote('')
+                  setTouched(true)
+                }}
+              >
+                <Icon name="arrow-up" size={14} />
+                <span className="txt">Use your note: “{note.trim()}”</span>
+              </button>
+            )
+          }
+        >
           {/*
             One tap covers the common cases, so the chips come first and the
             free-text field second. A chip fills the description when it is
@@ -276,8 +326,11 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           </div>
           <input
             value={description}
-            placeholder="Dinner at the beach shack"
+            // "e.g." so the grey example is never mistaken for something
+            // already typed: on a phone, placeholder and value look alike.
+            placeholder="e.g. Dinner at the beach shack"
             maxLength={200}
+            aria-invalid={errorAt('description') !== null}
             onChange={(e) => {
               setDescription(e.target.value)
               setTouched(true)
@@ -285,7 +338,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           />
         </Field>
 
-        <Field label="Who paid?">
+        <Field label="Who paid?" error={errorAt('paidBy')} anchor={anchors.paidBy}>
           {/*
             People as tappable faces, not a dropdown: the payer is the one
             fact everyone at the table knows, and a face is faster to find
@@ -346,11 +399,11 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           )}
         </Field>
 
-        <Field label="Date">
+        <Field label="Date" error={errorAt('date')} anchor={anchors.date}>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
 
-        <Field label="Split">
+        <Field label="Split" error={errorAt('split')} anchor={anchors.split}>
           <Segmented
             value={mode}
             options={MODE_OPTIONS}
@@ -466,14 +519,25 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           />
         </Field>
 
-        {showProblem && <div className="error">{problem}</div>}
+        {/*
+          A pointer, not a verdict: the message itself sits under the field it
+          is about. Tapping this takes the person there.
+        */}
+        {showProblem && (
+          <button type="button" className="error jump" onClick={jumpToProblem}>
+            <Icon name="arrow-up" size={16} />
+            <span>
+              <strong>Not saved yet.</strong> {problem.message}
+            </span>
+          </button>
+        )}
 
         <div className="spacer" />
         <div className="btn-row">
           <button className="btn ghost" onClick={() => back(parent)}>
             Cancel
           </button>
-          <button className="btn primary" disabled={!canSave} onClick={save}>
+          <button className="btn primary" onClick={save}>
             <Icon name="check" size={18} />
             Save
           </button>

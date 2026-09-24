@@ -1008,6 +1008,56 @@ input.amount-input {
   color: var(--text-dim);
 }
 
+/*
+ * A field's own error sits directly under it, in the words a person needs
+ * to fix that box, and the box itself turns red. The banner at the foot of
+ * the form is only a pointer back up to it.
+ */
+.field-error {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--negative);
+}
+
+.field-error > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.field.invalid > input,
+.field.invalid > .amount-wrap > input,
+.field.invalid > textarea {
+  border-color: rgba(251, 113, 133, 0.65);
+}
+
+.field.invalid > input:focus,
+.field.invalid > .amount-wrap > input:focus {
+  border-color: var(--negative);
+  box-shadow: 0 0 0 3px var(--negative-soft);
+}
+
+.field .chip.pick.last {
+  margin-top: 10px;
+}
+
+/* The foot-of-form pointer is a button: tapping it scrolls to the field. */
+.error.jump {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.error.jump > svg {
+  color: var(--negative);
+}
+
 /* ---------- alerts ---------- */
 
 .notice,
