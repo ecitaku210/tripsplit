@@ -256,6 +256,7 @@ export function Field({
   error,
   anchor,
   actions,
+  htmlFor,
   children,
 }: {
   label: string
@@ -270,11 +271,17 @@ export function Field({
   anchor?: RefObject<HTMLDivElement>
   /** Rendered after the error: a one-tap way out of it, when there is one. */
   actions?: ReactNode
+  /**
+   * The id of the control this label names. Without it the label is just
+   * text: tapping it does nothing and a screen reader announces an
+   * unnamed box.
+   */
+  htmlFor?: string
   children: ReactNode
 }) {
   return (
     <div className={`field${error ? ' invalid' : ''}`} ref={anchor}>
-      <label>{label}</label>
+      <label htmlFor={htmlFor}>{label}</label>
       {children}
       {error && (
         <p className="field-error" role="alert">

@@ -358,10 +358,25 @@ body {
   min-width: 0;
 }
 
+/*
+ * A row's title may take two lines. On a 320px phone the amount column
+ * leaves the description about seven characters before an ellipsis, and
+ * the description is what tells one dinner from another. Tags after the
+ * title ("you paid") wrap with it rather than being clipped away.
+ */
 .row .title {
   font-weight: 560;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* A one-line title where the row has its own second line of numbers. */
+.row .title.one-line {
+  display: block;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
@@ -611,6 +626,15 @@ body {
 }
 
 /* A button that reads as a link inside a sentence. */
+/* A link that stands on its own line under a notice: a 44px hit area, not a 20px one. */
+.alert .body > .link.stand {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 2px 0 -10px;
+  padding: 0;
+}
+
 .btn.link,
 button.link {
   display: inline;
@@ -1467,6 +1491,11 @@ details.howto .body strong {
 }
 
 /* Proportional bar under each balance. */
+/* The sub-line carries "paid X, used Y": numbers, so it wraps rather than truncates. */
+.balance-row .meta {
+  white-space: normal;
+}
+
 .balance-row .bar {
   height: 4px;
   margin-top: 8px;
@@ -1570,7 +1599,7 @@ details.howto .body strong {
 
 .chip.pick {
   flex: none;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -1728,7 +1757,7 @@ details.howto .body strong {
 .chip.tiny {
   margin-left: 6px;
   padding: 1px 7px;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1766,7 +1795,7 @@ details.howto .body strong {
  */
 .split-row input:not(.check) {
   flex: none;
-  width: 88px;
+  width: 72px;
   min-height: 40px;
   padding: 6px 10px;
   text-align: right;
@@ -1801,11 +1830,23 @@ details.howto .body strong {
 }
 
 /* Arrow between two names in a repayment. */
-.pay-line {
+/*
+ * "Asha → Chirag": when the pair does not fit, the second name drops to the
+ * next line whole. Shrinking both names to "A… → C…" told nobody anything.
+ */
+.row .title.pay-line {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 2px 6px;
   min-width: 0;
+}
+
+.pay-line > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pay-line .arrow {

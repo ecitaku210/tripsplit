@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useStore, useTrip } from '../../storage/store'
 import { buildLedgerFile, decodeLedger, encodeLedger, parseLedger } from '../../domain/ledger'
 import { liveExpenses } from '../../domain/balance'
 import { Alert, NotFound, TopBar } from '../components'
 import { Icon } from '../icons'
+import { tap } from '../haptics'
 import { back } from '../router'
 import type { Id } from '../../domain/types'
 import type { MergeSummary } from '../../domain/merge'
@@ -24,6 +25,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
   const { db, importTrips, encryptTrip } = useStore()
   const [copied, setCopied] = useState(false)
   const [pasted, setPasted] = useState('')
+  const codeBox = useRef<HTMLTextAreaElement>(null)
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [confirmEncrypt, setConfirmEncrypt] = useState(false)
 
@@ -163,8 +165,8 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
           ) : (
             <Alert tone="warn">
               <strong>Not encrypted yet.</strong> This trip was created before encryption existed,
-              so Firebase can read it. New trips are encrypted from the start.{' '}
-              <button className="link" onClick={() => setConfirmEncrypt(true)}>
+              so Firebase can read it. New trips are encrypted from the start.
+              <button className="link stand" onClick={() => setConfirmEncrypt(true)}>
                 Turn on encryption
               </button>
             </Alert>
@@ -182,7 +184,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
             </p>
             <button className="btn primary block" onClick={shareFile}>
               <Icon name="share" size={18} />
-              Share to WhatsApp, AirDrop…
+              Share this trip
             </button>
             <div className="spacer" />
             <div className="btn-row">
@@ -227,7 +229,9 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
             </label>
             <div className="spacer" />
             <textarea
+              ref={codeBox}
               className="code-box"
+              aria-label="Share code"
               value={pasted}
               placeholder="…or paste a share code here"
               onChange={(e) => setPasted(e.target.value)}
@@ -235,8 +239,14 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
             <div className="spacer" />
             <button
               className="btn block"
-              disabled={pasted.trim() === ''}
-              onClick={() => applyImport(pasted)}
+              onClick={() => {
+                if (pasted.trim() === '') {
+                  codeBox.current?.focus()
+                  tap()
+                  return
+                }
+                applyImport(pasted)
+              }}
             >
               <Icon name="download" size={18} />
               Merge into my copy

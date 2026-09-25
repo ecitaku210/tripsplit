@@ -3,6 +3,7 @@ import { useStore } from '../../storage/store'
 import { decodeLedger, parseLedger } from '../../domain/ledger'
 import { Alert, TopBar } from '../components'
 import { Icon } from '../icons'
+import { tap } from '../haptics'
 import { navigate, replace } from '../router'
 import { describe } from './ShareScreen'
 
@@ -14,6 +15,7 @@ import { describe } from './ShareScreen'
 export function ImportScreen({ payload }: { payload: string | null }) {
   const { importTrips } = useStore()
   const [pasted, setPasted] = useState('')
+  const codeBox = useRef<HTMLTextAreaElement>(null)
   const [result, setResult] = useState<{ ok: boolean; message: string; tripId?: string } | null>(
     null,
   )
@@ -102,7 +104,9 @@ export function ImportScreen({ payload }: { payload: string | null }) {
               Or paste a share code
             </p>
             <textarea
+              ref={codeBox}
               className="code-box"
+              aria-label="Share code"
               value={pasted}
               placeholder="Paste the long code your friend sent"
               onChange={(e) => setPasted(e.target.value)}
@@ -110,8 +114,14 @@ export function ImportScreen({ payload }: { payload: string | null }) {
             <div className="spacer" />
             <button
               className="btn block"
-              disabled={pasted.trim() === ''}
-              onClick={() => apply(pasted)}
+              onClick={() => {
+                if (pasted.trim() === '') {
+                  codeBox.current?.focus()
+                  tap()
+                  return
+                }
+                apply(pasted)
+              }}
             >
               <Icon name="download" size={18} />
               Import

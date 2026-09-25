@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { evaluateAmount, formatMinor, formatMoney, parseAmount } from '../../domain/money'
@@ -67,6 +67,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
     return mine ? [mine, ...members.filter((m) => m.id !== me)] : members
   }, [members, db.identities, tripId])
   const payerRow = useRef<HTMLDivElement>(null)
+  const uid = useId()
+  const ids = { amount: `${uid}-amount`, description: `${uid}-desc`, date: `${uid}-date`, note: `${uid}-note` }
 
   /** The newest live expense on the trip, for "same as last time". */
   const last = useMemo(() => (trip ? liveExpenses(trip)[0] ?? null : null), [trip])
@@ -259,10 +261,16 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
         backLabel={existing ? existing.description || 'Expense' : trip.name}
       />
       <div className="content no-fab">
-        <Field label={`Amount (${trip.currency.code})`} error={errorAt('amount')} anchor={anchors.amount}>
+        <Field
+          label={`Amount (${trip.currency.code})`}
+          error={errorAt('amount')}
+          anchor={anchors.amount}
+          htmlFor={ids.amount}
+        >
           <div className="amount-wrap">
           <span className="sym" aria-hidden="true">{trip.currency.symbol.trim()}</span>
           <input
+            id={ids.amount}
             className="amount-input num"
             // `decimal` gives the numeric keypad with a decimal point on iOS
             // and Android, without the spinner arrows `type=number` adds.
@@ -296,6 +304,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           label="What was it for?"
           error={errorAt('description')}
           anchor={anchors.description}
+          htmlFor={ids.description}
           // The slip this rescues: the description typed into the note box,
           // this box left empty. One tap moves the words up here.
           actions={
@@ -346,6 +355,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
             })}
           </div>
           <input
+            id={ids.description}
             value={description}
             // "e.g." so the grey example is never mistaken for something
             // already typed: on a phone, placeholder and value look alike.
@@ -420,8 +430,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           )}
         </Field>
 
-        <Field label="Date" error={errorAt('date')} anchor={anchors.date}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <Field label="Date" error={errorAt('date')} anchor={anchors.date} htmlFor={ids.date}>
+          <input id={ids.date} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
 
         <Field label="Split" error={errorAt('split')} anchor={anchors.split}>
@@ -468,6 +478,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                     <input
                       inputMode="decimal"
                       className="num"
+                      aria-label={`${m.name}: ${mode === 'shares' ? 'shares' : mode === 'percent' ? 'percent' : 'amount'}`}
                       value={weights[m.id] ?? ''}
                       placeholder={mode === 'shares' ? '1' : '0'}
                       onChange={(e) => {
@@ -531,8 +542,9 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           )}
         </div>
 
-        <Field label="Note (optional)">
+        <Field label="Note (optional)" htmlFor={ids.note}>
           <textarea
+            id={ids.note}
             value={note}
             maxLength={500}
             placeholder="Anything worth remembering about this one"
