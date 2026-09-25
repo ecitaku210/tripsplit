@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { evaluateAmount, formatMinor, formatMoney, parseAmount } from '../../domain/money'
@@ -54,6 +54,20 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
     return [...live, ...departed]
   }, [trip, existing])
 
+  /**
+   * The payer row puts the reader first. Alphabetical order hid the
+   * commonest answer: with six people, the sixth name sits off the right
+   * edge of a phone, and when that name is "you" the row looks as if nobody
+   * is selected. The split list below stays alphabetical: it is a list to
+   * scan, not a choice to make.
+   */
+  const payers = useMemo(() => {
+    const me = db.identities[tripId]
+    const mine = members.find((m) => m.id === me)
+    return mine ? [mine, ...members.filter((m) => m.id !== me)] : members
+  }, [members, db.identities, tripId])
+  const payerRow = useRef<HTMLDivElement>(null)
+
   /** The newest live expense on the trip, for "same as last time". */
   const last = useMemo(() => (trip ? liveExpenses(trip)[0] ?? null : null), [trip])
   const lastPayerName = last && trip ? firstName(trip.members[last.paidBy]?.name ?? 'someone') : ''
@@ -78,6 +92,13 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
     return members[0]?.id ?? ''
   })
   const [date, setDate] = useState(existing?.date ?? todayISO())
+
+  // Whoever is selected must be on screen, on open and after "same as last
+  // time": a chosen face hidden past the edge reads as no choice at all.
+  useEffect(() => {
+    const on = payerRow.current?.querySelector<HTMLElement>('.person.on')
+    on?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [paidBy])
   const [mode, setMode] = useState<SplitMode>(existing?.splitMode ?? 'equal')
   const [note, setNote] = useState(existing?.note ?? '')
   const [touched, setTouched] = useState(false)
@@ -344,8 +365,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
             fact everyone at the table knows, and a face is faster to find
             than a name in a list.
           */}
-          <div className="people-pick" role="radiogroup" aria-label="Who paid?">
-            {members.map((m) => {
+          <div className="people-pick" role="radiogroup" aria-label="Who paid?" ref={payerRow}>
+            {payers.map((m) => {
               const on = paidBy === m.id
               return (
                 <button
