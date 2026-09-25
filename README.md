@@ -14,7 +14,7 @@ signal, and needs no account or sign-up.
 - **Settle up**: nets everyone off into the fewest payments instead of everyone paying everyone
 - **Live sync** — an expense added on one phone appears on everyone else's in about a second
 - Works offline, and catches up automatically when signal returns
-- Invite people by sharing a file or a code — over WhatsApp, AirDrop, email, anything
+- Invite people with a link — the phone's own share sheet into WhatsApp, or a file for anything else
 
 ---
 

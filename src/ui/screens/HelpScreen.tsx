@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Alert, TopBar } from '../components'
 import { Icon } from '../icons'
+import { appUrl } from '../invite'
 import { back } from '../router'
 
 /**
@@ -11,10 +12,6 @@ import { back } from '../router'
  * answer is a short list of taps, in the words the buttons actually use.
  */
 
-/** The installable address of this very deployment, wherever it is hosted. */
-function appUrl(): string {
-  return `${window.location.origin}${window.location.pathname}`
-}
 
 function Q({ q, children }: { q: string; children: ReactNode }) {
   return (
@@ -91,8 +88,9 @@ export function HelpScreen() {
           <Q q="Join a trip someone else created">
             <ol>
               <li>Ask them to open the trip, tap <strong>Invite &amp; share</strong>, then{' '}
-                <strong>Copy code</strong>, and send you the code.</li>
-              <li>In TripSplit, tap <strong>Import</strong>, paste the code, tap <strong>Import</strong>.</li>
+                <strong>Share this trip</strong>, and pick WhatsApp (or any chat).</li>
+              <li>Tap the link they send. The trip appears, with everything so far. On iPhone,
+                if it opened inside WhatsApp, tap <strong>⋯</strong> and <strong>Open in Safari</strong>.</li>
               <li>Open the trip and pick your name under <strong>Which person is you?</strong></li>
             </ol>
             <p>

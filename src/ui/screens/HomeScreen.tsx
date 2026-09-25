@@ -123,7 +123,7 @@ export function HomeScreen() {
                 once you are back online.
               </p>
               <p>
-                <strong>Anyone with a trip&apos;s share code can see and edit it.</strong> Share it
+                <strong>Anyone with a trip&apos;s invite link can see and edit it.</strong> Share it
                 only with the people on the trip.
               </p>
             </div>
@@ -261,9 +261,9 @@ function FirstRun() {
           <li>
             <span className="n">2</span>
             <div>
-              <div className="s-title">Send the group the share code</div>
+              <div className="s-title">Send the group the link</div>
               <div className="s-body">
-                They import it once. From then on every phone stays in step by itself.
+                They tap it once. From then on every phone stays in step by itself.
               </div>
             </div>
           </li>
