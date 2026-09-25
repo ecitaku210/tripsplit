@@ -41,6 +41,7 @@ export type IconName =
   | 'fuel'
   | 'tag'
   | 'clock'
+  | 'arrow-up'
 
 const PATHS: Record<IconName, string> = {
   utensils: 'M3 2v7a3 3 0 0 0 6 0V2M6 2v20M18 2c-2 0-3 3-3 7v2h3v11M18 2v9',
@@ -56,6 +57,7 @@ const PATHS: Record<IconName, string> = {
   plus: 'M12 5v14M5 12h14',
   back: 'M15 5l-7 7 7 7',
   arrow: 'M5 12h14M13 6l6 6-6 6',
+  'arrow-up': 'M12 19V5M6 11l6-6 6 6',
   users:
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   share: 'M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13',
