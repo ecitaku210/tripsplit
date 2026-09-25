@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { settlementPlan } from '../../domain/settle'
@@ -153,6 +153,8 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
   const [from, setFrom] = useState<Id>('')
   const [to, setTo] = useState<Id>('')
   const [amount, setAmount] = useState('')
+  const amountBox = useRef<HTMLInputElement>(null)
+  const uid = useId()
 
   // Sorted the same way as every other member list in the app, so the order
   // does not shuffle between screens.
@@ -184,8 +186,8 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
       <h2>Record a repayment</h2>
       <div className="card pad">
       <div className="field">
-        <label>Who paid</label>
-        <select value={fromId} onChange={(e) => setFrom(e.target.value)}>
+        <label htmlFor={`${uid}-from`}>Who paid</label>
+        <select id={`${uid}-from`} value={fromId} onChange={(e) => setFrom(e.target.value)}>
           {members.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
@@ -194,8 +196,8 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
         </select>
       </div>
       <div className="field">
-        <label>Who received</label>
-        <select value={toId} onChange={(e) => setTo(e.target.value)}>
+        <label htmlFor={`${uid}-to`}>Who received</label>
+        <select id={`${uid}-to`} value={toId} onChange={(e) => setTo(e.target.value)}>
           {members.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
@@ -204,8 +206,10 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
         </select>
       </div>
       <div className="field">
-        <label>Amount ({trip.currency.code})</label>
+        <label htmlFor={`${uid}-amount`}>Amount ({trip.currency.code})</label>
         <input
+          id={`${uid}-amount`}
+          ref={amountBox}
           inputMode="decimal"
           className="num"
           value={amount}
@@ -232,8 +236,14 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
         </button>
         <button
           className="btn primary"
-          disabled={!valid}
           onClick={() => {
+            // Never a dead button: a missing or bad amount gets the cursor.
+            // The two-people mistake already shows its own message above.
+            if (!valid) {
+              if (minor === null || minor <= 0) amountBox.current?.focus()
+              tap()
+              return
+            }
             if (minor === null) return
             addSettlement(tripId, {
               fromMember: fromId,

@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useStore, useTrip } from '../../storage/store'
 import { buildLedgerFile, decodeLedger, encodeLedger, parseLedger } from '../../domain/ledger'
 import { liveExpenses } from '../../domain/balance'
 import { Alert, NotFound, TopBar } from '../components'
 import { Icon } from '../icons'
+import { tap } from '../haptics'
 import { back } from '../router'
 import type { Id } from '../../domain/types'
 import type { MergeSummary } from '../../domain/merge'
@@ -12,18 +13,25 @@ import type { MergeSummary } from '../../domain/merge'
  * Sync, the manual way.
  *
  * Three routes out, because which one works depends on the phone:
- *   1. Share sheet  — one tap into WhatsApp. Android and iOS 15+ only.
- *   2. Download     — a .json file to attach anywhere. Works everywhere.
- *   3. Copy code    — text to paste into a chat. Works even where files do not.
+ *   1. Share sheet  — a LINK, one tap into WhatsApp. The sheet is offered
+ *      text and a URL, never a file: Android Chrome refuses to share a
+ *      .json file (its allow-list is images, media, plain text and PDF),
+ *      so a file share silently became a download and nobody saw a sheet.
+ *   2. Copy link    — the same link on the clipboard, for a chat the sheet
+ *      does not list, or a desktop browser with no sheet at all.
+ *   3. Download     — a .json file to attach anywhere. Works everywhere.
  *
  * All three carry the same bytes. Importing is safe to repeat because the
  * merge is idempotent, so the honest advice on this screen is "send it often".
  */
+
+import { codeFrom, inviteLink } from '../invite'
 export function ShareScreen({ tripId }: { tripId: Id }) {
   const trip = useTrip(tripId)
   const { db, importTrips, encryptTrip } = useStore()
   const [copied, setCopied] = useState(false)
   const [pasted, setPasted] = useState('')
+  const codeBox = useRef<HTMLTextAreaElement>(null)
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [confirmEncrypt, setConfirmEncrypt] = useState(false)
 
@@ -41,20 +49,36 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
   const fileName = `${slug(trip.name)}-${liveExpenses(trip).length}-expenses.tripsplit.json`
   const blob = () => new Blob([JSON.stringify(file, null, 0)], { type: 'application/json' })
 
-  async function shareFile() {
-    const file = new File([blob()], fileName, { type: 'application/json' })
-    // `canShare` with files must be checked separately: several browsers
-    // expose `navigator.share` but reject file payloads.
-    if (navigator.canShare?.({ files: [file] })) {
+  const link = inviteLink(code)
+  const inviteText = `Join "${trip.name}" on TripSplit. Open this link on your phone and the trip appears, with everything so far:`
+
+  /**
+   * Text and a URL, never a file. The sheet opens on every phone that has
+   * one (Android Chrome, iOS Safari); a dismissed sheet is not an error.
+   * Without a sheet, the link goes to the clipboard and the screen says so.
+   */
+  async function shareLink() {
+    if (navigator.share) {
       try {
-        await navigator.share({ files: [file], title: trip!.name })
+        await navigator.share({ title: `${trip!.name} on TripSplit`, text: inviteText, url: link })
         return
-      } catch {
-        // User dismissed the sheet, or the browser refused. Fall through to
-        // a download rather than leaving them with nothing.
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return
+        // The browser refused the payload: fall through to the clipboard.
       }
     }
-    downloadFile()
+    await copyLink()
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+      setResult({ ok: true, message: 'Link copied. Paste it into WhatsApp or any chat; whoever taps it joins the trip.' })
+    } catch {
+      setResult({ ok: false, message: 'Could not reach the clipboard. Save the file below and send that instead.' })
+    }
   }
 
   function downloadFile() {
@@ -67,18 +91,8 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }
 
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
-    } catch {
-      setResult({ ok: false, message: 'Could not reach the clipboard. Select the code and copy it by hand.' })
-    }
-  }
-
   function applyImport(text: string) {
-    const decoded = decodeLedger(text)
+    const decoded = decodeLedger(codeFrom(text))
     if (!decoded.ok) {
       setResult({ ok: false, message: decoded.message })
       return
@@ -128,7 +142,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
           {key ? (
             <Alert tone="good">
               <strong>End-to-end encrypted.</strong> Only phones with this trip&apos;s code can read
-              it; Firebase stores it as scrambled text. The code below carries the key, so share it
+              it; Firebase stores it as scrambled text. The link carries the key, so share it
               only with the people on the trip.
             </Alert>
           ) : confirmEncrypt ? (
@@ -163,8 +177,8 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
           ) : (
             <Alert tone="warn">
               <strong>Not encrypted yet.</strong> This trip was created before encryption existed,
-              so Firebase can read it. New trips are encrypted from the start.{' '}
-              <button className="link" onClick={() => setConfirmEncrypt(true)}>
+              so Firebase can read it. New trips are encrypted from the start.
+              <button className="link stand" onClick={() => setConfirmEncrypt(true)}>
                 Turn on encryption
               </button>
             </Alert>
@@ -180,24 +194,25 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
               Send them this trip once. After they open it, every phone stays in step by itself —
               no more sharing needed.
             </p>
-            <button className="btn primary block" onClick={shareFile}>
+            <button className="btn primary block" onClick={shareLink}>
               <Icon name="share" size={18} />
-              Share to WhatsApp, AirDrop…
+              Share this trip
             </button>
             <div className="spacer" />
             <div className="btn-row">
+              <button className="btn" onClick={copyLink}>
+                <Icon name={copied ? 'check' : 'copy'} size={18} />
+                {copied ? 'Copied' : 'Copy link'}
+              </button>
               <button className="btn" onClick={downloadFile}>
                 <Icon name="download" size={18} />
                 Save file
               </button>
-              <button className="btn" onClick={copyCode}>
-                <Icon name={copied ? 'check' : 'copy'} size={18} />
-                {copied ? 'Copied' : 'Copy code'}
-              </button>
             </div>
             <p className="hint">
-              The code is {Math.ceil(code.length / 1024)} KB of text and pastes into any chat. If
-              the chat app mangles it, send the file instead.
+              Share opens your phone's own sheet: pick WhatsApp, and whoever taps the link joins.
+              The link carries the whole trip ({Math.ceil(code.length / 1024)} KB), so if a chat
+              app clips it, send the file instead.
             </p>
           </div>
         </div>
@@ -227,16 +242,24 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
             </label>
             <div className="spacer" />
             <textarea
+              ref={codeBox}
               className="code-box"
+              aria-label="Share code"
               value={pasted}
-              placeholder="…or paste a share code here"
+              placeholder="…or paste a link or code here"
               onChange={(e) => setPasted(e.target.value)}
             />
             <div className="spacer" />
             <button
               className="btn block"
-              disabled={pasted.trim() === ''}
-              onClick={() => applyImport(pasted)}
+              onClick={() => {
+                if (pasted.trim() === '') {
+                  codeBox.current?.focus()
+                  tap()
+                  return
+                }
+                applyImport(pasted)
+              }}
             >
               <Icon name="download" size={18} />
               Merge into my copy

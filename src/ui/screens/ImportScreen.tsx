@@ -3,21 +3,38 @@ import { useStore } from '../../storage/store'
 import { decodeLedger, parseLedger } from '../../domain/ledger'
 import { Alert, TopBar } from '../components'
 import { Icon } from '../icons'
+import { tap } from '../haptics'
 import { navigate, replace } from '../router'
 import { describe } from './ShareScreen'
+import { codeFrom } from '../invite'
 
 /**
  * The landing screen for `#/import?d=<code>`, which is what a shared link
  * opens. It also doubles as a standalone importer reached from the home
  * screen, for a pasted code or a file.
  */
+/**
+ * On iOS a link tapped inside WhatsApp opens in WhatsApp's own browser,
+ * whose storage is separate from Safari's and from the installed app's. An
+ * import there is real but invisible from the home-screen icon. Android
+ * opens links in Chrome, which shares storage with the installed app.
+ */
+function insideAnotherApp(): boolean {
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent)
+  const installed = window.matchMedia('(display-mode: standalone)').matches
+  return ios && !installed
+}
+
 export function ImportScreen({ payload }: { payload: string | null }) {
   const { importTrips } = useStore()
   const [pasted, setPasted] = useState('')
+  const codeBox = useRef<HTMLTextAreaElement>(null)
   const [result, setResult] = useState<{ ok: boolean; message: string; tripId?: string } | null>(
     null,
   )
   const consumed = useRef(false)
+  // Remembered past the URL rewrite below, which drops the payload.
+  const arrivedByLink = useRef(payload !== null).current
 
   useEffect(() => {
     if (!payload || consumed.current) return
@@ -29,8 +46,8 @@ export function ImportScreen({ payload }: { payload: string | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payload])
 
-  function apply(code: string) {
-    const decoded = decodeLedger(code)
+  function apply(text: string) {
+    const decoded = decodeLedger(codeFrom(text))
     if (!decoded.ok) {
       setResult({ ok: false, message: decoded.message })
       return
@@ -99,19 +116,27 @@ export function ImportScreen({ payload }: { payload: string | null }) {
               />
             </label>
             <p className="kicker" style={{ margin: '16px 0 8px' }}>
-              Or paste a share code
+              Or paste a link or code
             </p>
             <textarea
+              ref={codeBox}
               className="code-box"
+              aria-label="Share code"
               value={pasted}
-              placeholder="Paste the long code your friend sent"
+              placeholder="Paste the link or code your friend sent"
               onChange={(e) => setPasted(e.target.value)}
             />
             <div className="spacer" />
             <button
               className="btn block"
-              disabled={pasted.trim() === ''}
-              onClick={() => apply(pasted)}
+              onClick={() => {
+                if (pasted.trim() === '') {
+                  codeBox.current?.focus()
+                  tap()
+                  return
+                }
+                apply(pasted)
+              }}
             >
               <Icon name="download" size={18} />
               Import
@@ -122,6 +147,16 @@ export function ImportScreen({ payload }: { payload: string | null }) {
         {result && (
           <div className="section">
             <Alert tone={result.ok ? 'good' : 'bad'}>{result.message}</Alert>
+            {result.ok && arrivedByLink && insideAnotherApp() && (
+              <>
+                <div className="spacer" />
+                <Alert tone="warn">
+                  <strong>Opened inside WhatsApp?</strong> Then the trip landed in its built-in
+                  browser, not in TripSplit on your home screen. Tap <strong>⋯</strong>, choose{' '}
+                  <strong>Open in Safari</strong>, and the trip follows.
+                </Alert>
+              </>
+            )}
             {result.ok && result.tripId && (
               <>
                 <div className="spacer" />

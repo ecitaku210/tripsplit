@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useStore } from '../../storage/store'
 import { computeTotals, liveExpenses, liveMembers } from '../../domain/balance'
 import { DEFAULT_CURRENCIES, formatMoney } from '../../domain/money'
@@ -8,6 +8,7 @@ import { navigate } from '../router'
 import type { Currency, Trip } from '../../domain/types'
 import { countOf } from '../plural'
 import { timeAgo } from '../dates'
+import { tap } from '../haptics'
 
 export function HomeScreen() {
   const { db, createTrip, usage, saveError } = useStore()
@@ -122,7 +123,7 @@ export function HomeScreen() {
                 once you are back online.
               </p>
               <p>
-                <strong>Anyone with a trip&apos;s share code can see and edit it.</strong> Share it
+                <strong>Anyone with a trip&apos;s invite link can see and edit it.</strong> Share it
                 only with the people on the trip.
               </p>
             </div>
@@ -260,9 +261,9 @@ function FirstRun() {
           <li>
             <span className="n">2</span>
             <div>
-              <div className="s-title">Send the group the share code</div>
+              <div className="s-title">Send the group the link</div>
               <div className="s-body">
-                They import it once. From then on every phone stays in step by itself.
+                They tap it once. From then on every phone stays in step by itself.
               </div>
             </div>
           </li>
@@ -291,33 +292,71 @@ function NewTripForm({
   const [name, setName] = useState('')
   const [myName, setMyName] = useState('')
   const [code, setCode] = useState('INR')
+  // Set by a refused Create: only then do empty boxes turn red.
+  const [tried, setTried] = useState(false)
+  const nameBox = useRef<HTMLInputElement>(null)
+  const myNameBox = useRef<HTMLInputElement>(null)
+  const uid = useId()
 
   const currency = DEFAULT_CURRENCIES.find((c) => c.code === code) ?? DEFAULT_CURRENCIES[0]!
-  const valid = name.trim().length > 0 && myName.trim().length > 0
+  const nameMissing = name.trim().length === 0
+  const myNameMissing = myName.trim().length === 0
+  const valid = !nameMissing && !myNameMissing
+
+  /**
+   * Create is never a dead button. Tapped too early, it puts the cursor in
+   * the first empty box and says what goes there.
+   */
+  function create() {
+    if (!valid) {
+      setTried(true)
+      ;(nameMissing ? nameBox : myNameBox).current?.focus()
+      tap()
+      return
+    }
+    onCreate(name.trim(), currency, myName.trim())
+  }
 
   return (
     <div className="section">
       <h2>New trip</h2>
       <div className="card pad">
-        <Field label="Trip name">
+        <Field
+          label="Trip name"
+          htmlFor={`${uid}-name`}
+          error={tried && nameMissing ? 'Give the trip a name.' : null}
+        >
           <input
+            id={`${uid}-name`}
+            ref={nameBox}
             autoFocus
             value={name}
-            placeholder="Goa, March 2026"
+            placeholder="e.g. Goa, March 2026"
             onChange={(e) => setName(e.target.value)}
             maxLength={120}
           />
         </Field>
-        <Field label="Your name" hint="This is how you appear to everyone else on the trip.">
+        <Field
+          label="Your name"
+          htmlFor={`${uid}-me`}
+          hint="This is how you appear to everyone else on the trip."
+          error={tried && myNameMissing ? 'What do your friends call you?' : null}
+        >
           <input
+            id={`${uid}-me`}
+            ref={myNameBox}
             value={myName}
-            placeholder="Tarun"
+            placeholder="e.g. Tarun"
             onChange={(e) => setMyName(e.target.value)}
             maxLength={80}
           />
         </Field>
-        <Field label="Currency" hint="One currency per trip. Convert before entering an expense.">
-          <select value={code} onChange={(e) => setCode(e.target.value)}>
+        <Field
+          label="Currency"
+          htmlFor={`${uid}-cur`}
+          hint="One currency per trip. Convert before entering an expense."
+        >
+          <select id={`${uid}-cur`} value={code} onChange={(e) => setCode(e.target.value)}>
             {DEFAULT_CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.code} ({c.symbol.trim()})
@@ -329,11 +368,7 @@ function NewTripForm({
           <button className="btn ghost" onClick={onCancel}>
             Cancel
           </button>
-          <button
-            className="btn primary"
-            disabled={!valid}
-            onClick={() => onCreate(name.trim(), currency, myName.trim())}
-          >
+          <button className="btn primary" onClick={create}>
             <Icon name="check" size={18} />
             Create
           </button>

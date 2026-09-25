@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { Avatar, Money, NotFound, TopBar } from '../components'
@@ -6,6 +6,7 @@ import { Icon } from '../icons'
 import { reset } from '../router'
 import { useToast } from '../toast'
 import { countOf } from '../plural'
+import { tap } from '../haptics'
 import type { Id } from '../../domain/types'
 
 export function PeopleScreen({ tripId }: { tripId: Id }) {
@@ -23,6 +24,8 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
   } = useStore()
   const { show: toast } = useToast()
   const [newName, setNewName] = useState('')
+  const newNameBox = useRef<HTMLInputElement>(null)
+  const tripNameBox = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState<Id | null>(null)
   const [editName, setEditName] = useState('')
   /**
@@ -134,6 +137,8 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
           <h2>Add someone</h2>
           <div className="inline">
             <input
+              ref={newNameBox}
+              aria-label="Name of the person to add"
               value={newName}
               placeholder="Name"
               maxLength={80}
@@ -147,8 +152,13 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
             />
             <button
               className="btn primary"
-              disabled={!newName.trim()}
               onClick={() => {
+                // An empty box is not a reason for a dead button: put the cursor there.
+                if (!newName.trim()) {
+                  newNameBox.current?.focus()
+                  tap()
+                  return
+                }
                 addMember(trip.id, newName.trim())
                 setNewName('')
               }}
@@ -165,7 +175,11 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
 
         <div className="section">
           <h2>Which one is you?</h2>
-          <select value={me ?? ''} onChange={(e) => setMyself(trip.id, e.target.value)}>
+          <select
+            aria-label="Which one is you?"
+            value={me ?? ''}
+            onChange={(e) => setMyself(trip.id, e.target.value)}
+          >
             <option value="">Not set</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
@@ -183,14 +197,23 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
           <h2>Trip name</h2>
           <div className="inline">
             <input
+              ref={tripNameBox}
+              aria-label="Trip name"
               value={tripName}
               maxLength={120}
               onChange={(e) => setDraftName(e.target.value)}
             />
             <button
               className="btn"
-              disabled={!tripName.trim() || tripName.trim() === trip.name}
+              // Disabled only while there is nothing to save. An emptied box
+              // keeps the button live so a tap returns the cursor to it.
+              disabled={tripName.trim() === trip.name}
               onClick={() => {
+                if (!tripName.trim()) {
+                  tripNameBox.current?.focus()
+                  tap()
+                  return
+                }
                 renameTrip(trip.id, tripName.trim())
                 setDraftName(null)
               }}
