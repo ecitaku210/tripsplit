@@ -42,6 +42,12 @@ export type IconName =
   | 'tag'
   | 'clock'
   | 'arrow-up'
+  | 'basket'
+  | 'home'
+  | 'bolt'
+  | 'key'
+  | 'archive'
+  | 'flag'
 
 const PATHS: Record<IconName, string> = {
   utensils: 'M3 2v7a3 3 0 0 0 6 0V2M6 2v20M18 2c-2 0-3 3-3 7v2h3v11M18 2v9',
@@ -58,6 +64,12 @@ const PATHS: Record<IconName, string> = {
   back: 'M15 5l-7 7 7 7',
   arrow: 'M5 12h14M13 6l6 6-6 6',
   'arrow-up': 'M12 19V5M6 11l6-6 6 6',
+  basket: 'M3 10h18l-1.6 9.1a2 2 0 0 1-2 1.9H6.6a2 2 0 0 1-2-1.9L3 10zM8 10l3-6M16 10l-3-6M9 14v3M12 14v3M15 14v3',
+  home: 'M3 11l9-8 9 8M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10',
+  bolt: 'M13 2L4 14h7l-1 8 9-12h-7l1-8z',
+  key: 'M14 3a6 6 0 1 0 2.5 11.5L21 19v2h-2l-1-1v-2h-2v-2h-2l-1.6-1.6A6 6 0 0 0 14 3zM14 8h.01',
+  archive: 'M3 4h18v4H3zM5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4',
+  flag: 'M5 21V4M5 4h11l-2 4 2 4H5',
   users:
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   share: 'M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13',

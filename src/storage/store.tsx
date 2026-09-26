@@ -25,6 +25,7 @@ import {
   summariseMerge,
   type MergeSummary,
 } from '../domain/merge'
+import { computeTotals, periodStart } from '../domain/balance'
 import { loadDatabase, newId, saveDatabase, storageUsage, type StorageUsage } from './db'
 import { newTripKey } from '../sync/crypto'
 
@@ -81,6 +82,20 @@ interface StoreValue {
    * share code, which carries the key.
    */
   encryptTrip(tripId: Id): void
+
+  /**
+   * Draw a line under the books: everything so far becomes a closed,
+   * read-only period and balances start again from zero. Refused unless
+   * everyone is square, so a closed period is always a finished story.
+   * Returns the closing's id, or null when refused.
+   */
+  closeBooks(tripId: Id, note?: string): Id | null
+  /** Undo a closing: its period rejoins the current one. */
+  reopenBooks(tripId: Id, closingId: Id): void
+
+  /** Put a trip away on this phone only: hidden from the list, not watched live. */
+  archiveTrip(tripId: Id): void
+  unarchiveTrip(tripId: Id): void
 }
 
 export interface ExpenseDraft {
@@ -170,6 +185,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           },
           expenses: {},
           settlements: {},
+          closings: {},
         }
         // Encrypted from the first write: the key is minted with the trip.
         const key = newTripKey()
@@ -258,6 +274,49 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setDb((prev) => ({ ...prev, identities: { ...prev.identities, [tripId]: memberId } }))
       },
 
+      closeBooks(tripId, note = '') {
+        const trip = db.trips[tripId]
+        if (!trip) return null
+        const square = computeTotals(trip).balances.every((b) => b.netMinor === 0)
+        if (!square) return null
+        const id = newId()
+        const at = Math.max(Date.now(), periodStart(trip) + 1)
+        editTrip(tripId, (t) => ({
+          ...t,
+          closings: { ...(t.closings ?? {}), [id]: { id, at, note, createdAt: at, ...stamp() } },
+        }))
+        return id
+      },
+
+      reopenBooks(tripId, closingId) {
+        editTrip(tripId, (t) => {
+          const c = t.closings?.[closingId]
+          if (!c || c.deletedAt !== null) return t
+          const now = Date.now()
+          return {
+            ...t,
+            closings: { ...t.closings, [closingId]: { ...c, updatedAt: now, updatedBy: db.deviceId, deletedAt: now } },
+          }
+        })
+      },
+
+      archiveTrip(tripId) {
+        setDb((prev) => ({ ...prev, archived: { ...prev.archived, [tripId]: Date.now() } }))
+      },
+
+      unarchiveTrip(tripId) {
+        setDb((prev) => {
+          if (!(tripId in prev.archived)) return prev
+          const { [tripId]: _gone, ...rest } = prev.archived
+          return { ...prev, archived: rest }
+        })
+      },
+
+      /**
+       * A new record must land in the CURRENT period even when this phone's
+       * clock lags the phone that closed the books, so createdAt is never
+       * older than the period's start.
+       */
       saveExpense(tripId, draft) {
         editTrip(tripId, (trip) => {
           const existing = draft.id ? trip.expenses[draft.id] : undefined
@@ -271,7 +330,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             splitMode: draft.splitMode,
             parts: draft.parts,
             note: draft.note,
-            createdAt: existing?.createdAt ?? Date.now(),
+            createdAt: existing?.createdAt ?? Math.max(Date.now(), periodStart(trip) + 1),
             ...stamp(),
           }
           return { ...trip, expenses: { ...trip.expenses, [id]: expense } }
@@ -304,7 +363,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addSettlement(tripId, draft) {
         const id = newId()
         editTrip(tripId, (trip) => {
-          const settlement: Settlement = { id, ...draft, createdAt: Date.now(), ...stamp() }
+          const settlement: Settlement = {
+            id,
+            ...draft,
+            createdAt: Math.max(Date.now(), periodStart(trip) + 1),
+            ...stamp(),
+          }
           return { ...trip, settlements: { ...trip.settlements, [id]: settlement } }
         })
       },

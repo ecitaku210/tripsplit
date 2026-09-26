@@ -74,6 +74,9 @@ export function mergeTrip(a: Trip, b: Trip): Trip {
     members: mergeRecords(a.members, b.members),
     expenses: mergeRecords(a.expenses, b.expenses),
     settlements: mergeRecords(a.settlements, b.settlements),
+    // `?? {}`: a database saved before closings existed has trips without
+    // the field, and they must merge rather than throw.
+    closings: mergeRecords(a.closings ?? {}, b.closings ?? {}),
   }
 }
 

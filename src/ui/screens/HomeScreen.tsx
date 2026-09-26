@@ -16,16 +16,19 @@ export function HomeScreen() {
   const { db, createTrip, usage, saveError } = useStore()
   const [creating, setCreating] = useState(false)
 
-  const trips = Object.values(db.trips)
+  const live = Object.values(db.trips)
     .filter((t) => t.deletedAt === null)
     .sort((a, b) => b.createdAt - a.createdAt)
+  // Put-away trips sit under a fold at the bottom: readable, not in the way.
+  const trips = live.filter((t) => !(t.id in db.archived))
+  const archived = live.filter((t) => t.id in db.archived)
 
   return (
     <>
       <TopBar
         brand
         title="TripSplit"
-        subtitle={trips.length ? countOf(trips.length, 'trip', 'trips') : 'Split trip costs, fairly'}
+        subtitle={trips.length ? countOf(trips.length, 'group', 'groups') : 'Split costs with anyone, fairly'}
         right={
           <button
             className="btn ghost icon-only"
@@ -42,7 +45,7 @@ export function HomeScreen() {
             <Alert tone="bad">
               {saveError === 'blocked'
                 ? 'This browser is blocking storage, so nothing is being saved. Private/Incognito mode does this — open the app in a normal window.'
-                : 'Storage is full, so your last change was not saved. Export this trip and delete an old one.'}
+                : 'Storage is full, so your last change was not saved. Export this group and delete an old one.'}
             </Alert>
           </div>
         )}
@@ -51,18 +54,18 @@ export function HomeScreen() {
           <div className="section">
             <Alert tone="warn">
               Local storage is <strong>{Math.round(usage.ratio * 100)}% full</strong>. Export and
-              delete finished trips to make room.
+              delete finished groups to make room.
             </Alert>
           </div>
         )}
 
-        {trips.length === 0 && !creating && <FirstRun />}
+        {trips.length === 0 && archived.length === 0 && !creating && <FirstRun />}
 
         {trips.length > 1 && <Standing trips={trips} identities={db.identities} />}
 
         {trips.length > 0 && (
           <div className="section">
-            <h2>Your trips</h2>
+            <h2>Your groups</h2>
             {trips.map((trip) => (
               <TripCard key={trip.id} trip={trip} me={db.identities[trip.id]} />
             ))}
@@ -83,7 +86,7 @@ export function HomeScreen() {
             <div className="btn-row">
               <button className="btn primary" onClick={() => setCreating(true)}>
                 <Icon name="plus" size={18} />
-                New trip
+                New group
               </button>
               <button className="btn" onClick={() => navigate('/import')}>
                 <Icon name="download" size={18} />
@@ -91,9 +94,27 @@ export function HomeScreen() {
               </button>
             </div>
             <p className="hint">
-              Someone sent you a trip? <strong>Import</strong> it once, and it stays in step from
+              Someone sent you a group? <strong>Import</strong> it once, and it stays in step from
               then on.
             </p>
+          </div>
+        )}
+
+        {archived.length > 0 && (
+          <div className="section">
+            <details className="howto">
+              <summary>
+                <Icon name="archive" size={18} />
+                Archived
+                <span className="dim"> · {archived.length}</span>
+                <Icon name="chevron" size={18} className="chev" />
+              </summary>
+              <div className="body">
+                {archived.map((trip) => (
+                  <TripCard key={trip.id} trip={trip} me={db.identities[trip.id]} />
+                ))}
+              </div>
+            </details>
           </div>
         )}
 
@@ -104,7 +125,7 @@ export function HomeScreen() {
             </span>
             <span className="t-title">Help &amp; FAQ</span>
             <span className="t-sub">
-              How to install on iPhone or Android, join a trip, split a bill and settle up.
+              How to install on iPhone or Android, join a group, split a bill and settle up.
             </span>
           </button>
           <div className="spacer" />
@@ -116,7 +137,7 @@ export function HomeScreen() {
             </summary>
             <div className="body">
               <p>
-                <strong>Trips sync live</strong> between everyone&apos;s phones through Google
+                <strong>Groups sync live</strong> between everyone&apos;s phones through Google
                 Firebase whenever there is signal. Expenses are stored there as well as on your
                 phone.
               </p>
@@ -125,8 +146,8 @@ export function HomeScreen() {
                 once you are back online.
               </p>
               <p>
-                <strong>Anyone with a trip&apos;s invite link can see and edit it.</strong> Share it
-                only with the people on the trip.
+                <strong>Anyone with a group&apos;s invite link can see and edit it.</strong> Share it
+                only with the people in the group.
               </p>
             </div>
           </details>
@@ -230,7 +251,7 @@ function Standing({ trips, identities }: { trips: Trip[]; identities: Record<str
           const v = verdict(r.net)
           return (
             <div key={r.currency.code} className="standing-row">
-              <span className="kicker">Across {countOf(r.trips, 'trip', 'trips')}</span>
+              <span className="kicker">Across {countOf(r.trips, 'group', 'groups')}</span>
               <span className={`verdict ${v.tone}`}>
                 {v.label}
                 {r.net !== 0 && (
@@ -253,15 +274,15 @@ function FirstRun() {
   return (
     <div className="section">
       <div className="card pad">
-        <Empty icon="sparkle" title="Split a trip in three steps">
+        <Empty icon="sparkle" title="Split costs in three steps">
           Log who paid for what, and the app works out who owes whom at the end.
         </Empty>
         <ol className="steps">
           <li>
             <span className="n">1</span>
             <div>
-              <div className="s-title">Create a trip and add everyone going</div>
-              <div className="s-body">One person does this, so the group shares one trip.</div>
+              <div className="s-title">Create a group and add everyone in it</div>
+              <div className="s-body">One person does this, so everyone shares one group.</div>
             </div>
           </li>
           <li>
@@ -325,12 +346,12 @@ function NewTripForm({
 
   return (
     <div className="section">
-      <h2>New trip</h2>
+      <h2>New group</h2>
       <div className="card pad">
         <Field
-          label="Trip name"
+          label="Group name"
           htmlFor={`${uid}-name`}
-          error={tried && nameMissing ? 'Give the trip a name.' : null}
+          error={tried && nameMissing ? 'Give the group a name.' : null}
         >
           <input
             id={`${uid}-name`}
@@ -345,7 +366,7 @@ function NewTripForm({
         <Field
           label="Your name"
           htmlFor={`${uid}-me`}
-          hint="This is how you appear to everyone else on the trip."
+          hint="This is how you appear to everyone else in the group."
           error={tried && myNameMissing ? 'What do your friends call you?' : null}
         >
           <input
@@ -360,7 +381,7 @@ function NewTripForm({
         <Field
           label="Currency"
           htmlFor={`${uid}-cur`}
-          hint="One currency per trip. Convert before entering an expense."
+          hint="One currency per group. Convert before entering an expense."
         >
           <select id={`${uid}-cur`} value={code} onChange={(e) => setCode(e.target.value)}>
             {DEFAULT_CURRENCIES.map((c) => (

@@ -48,7 +48,7 @@ export function HelpScreen() {
       <div className="content no-fab faq">
         <div className="section">
           <Alert tone="info">
-            <strong>New to the group?</strong> Install the app (first section), then import the trip
+            <strong>New to the group?</strong> Install the app (first section), then import the group
             code someone sends you. From then on everything syncs by itself.
           </Alert>
         </div>
@@ -85,24 +85,24 @@ export function HelpScreen() {
               </li>
             </ol>
           </Q>
-          <Q q="Join a trip someone else created">
+          <Q q="Join a group someone else created">
             <ol>
-              <li>Ask them to open the trip, tap <strong>Invite &amp; share</strong>, then{' '}
-                <strong>Share this trip</strong>, and pick WhatsApp (or any chat).</li>
-              <li>Tap the link they send. The trip appears, with everything so far. On iPhone,
+              <li>Ask them to open the group, tap <strong>Invite &amp; share</strong>, then{' '}
+                <strong>Share this group</strong>, and pick WhatsApp (or any chat).</li>
+              <li>Tap the link they send. The group appears, with everything so far. On iPhone,
                 if it opened inside WhatsApp, tap <strong>⋯</strong> and <strong>Open in Safari</strong>.</li>
-              <li>Open the trip and pick your name under <strong>Which person is you?</strong></li>
+              <li>Open the group and pick your name under <strong>Which person is you?</strong></li>
             </ol>
             <p>
               You only do this once. After that, every expense anyone adds appears on your phone by
               itself.
             </p>
           </Q>
-          <Q q="Start a new trip">
+          <Q q="Start a new group">
             <p>
-              <strong>Exactly one person</strong> creates the trip and adds everyone under{' '}
-              <strong>People</strong>. Then they share the code. If two people each create a trip,
-              you end up with two trips that never join.
+              <strong>Exactly one person</strong> creates the group and adds everyone under{' '}
+              <strong>People</strong>. Then they share the code. If two people each create a group,
+              you end up with two groups that never join.
             </p>
           </Q>
         </div>
@@ -158,14 +158,14 @@ export function HelpScreen() {
 
         <div className="section">
           <h2>Syncing</h2>
-          <Q q="What does the badge at the top of a trip mean?">
+          <Q q="What does the badge at the top of a group mean?">
             <p>
               <strong>Live</strong>: in step with everyone. <strong>Saving…</strong>: sending your
               change. <strong>Offline</strong>: no signal; everything is saved on your phone and
               goes up when signal returns. <strong>Sync problem</strong>: the app keeps retrying by
               itself. <strong>Update needed</strong>: close the app fully and open it again.{' '}
-              <strong>Locked</strong>: the trip is encrypted and this phone lacks the key; ask
-              someone on the trip for the code again and import it. <strong>Daily limit</strong>:
+              <strong>Locked</strong>: the group is encrypted and this phone lacks the key; ask
+              someone in the group for the code again and import it. <strong>Daily limit</strong>:
               the free sync allowance for the day is used up; everything is saved on the phone and
               syncs again after the daily reset.
             </p>
@@ -181,7 +181,7 @@ export function HelpScreen() {
             <ol>
               <li>Ask them to open the app with signal and check it says <strong>Live</strong>.</li>
               <li>
-                Still nothing? You may be in <strong>different trips</strong>. Trips created
+                Still nothing? You may be in <strong>different groups</strong>. Groups created
                 separately never join. Keep the one with the data: they send you its code, you{' '}
                 <strong>Import</strong> it, and delete the empty one.
               </li>
@@ -208,9 +208,32 @@ export function HelpScreen() {
               </li>
             </ol>
           </Q>
+          <Q q="We settled up. How do we start a fresh count without deleting the group?">
+            <p>
+              For a flat, a running tab, or any group that keeps going: once everyone is square,
+              tap <strong>Settle up</strong> (or open <strong>Balances</strong>) and tap{' '}
+              <strong>Close the books</strong>. Everything so far moves under{' '}
+              <strong>Closed periods</strong> at the bottom of the group, still readable, and the
+              balances start again from zero. Nothing is deleted, and it happens on every phone.
+            </p>
+            <p>
+              Closed expenses cannot be edited. If something was missed, open the period under{' '}
+              <strong>Closed periods</strong> and tap <strong>Reopen this period</strong>, fix it,
+              settle, and close again. Only offered when everyone is square: a closed period is
+              always a finished story.
+            </p>
+          </Q>
+          <Q q="A group is finished. How do I put it away?">
+            <p>
+              Open the group, tap <strong>People</strong>, then <strong>Archive this group</strong>.
+              It moves under <strong>Archived</strong> on the home screen, keeps everything, and
+              stops checking for updates. This is on your phone only; nobody else is affected, and{' '}
+              <strong>Bring back from Archived</strong> undoes it.
+            </p>
+          </Q>
           <Q q="A repayment was recorded twice, or by mistake">
             <p>
-              On the trip screen, under <strong>Repayments</strong>, tap the <strong>bin icon</strong>{' '}
+              On the group screen, under <strong>Repayments</strong>, tap the <strong>bin icon</strong>{' '}
               next to it. It is removed for everyone. The app warns you with{' '}
               <strong>Possible double repayment</strong> when two phones recorded the same one.
             </p>
@@ -232,15 +255,15 @@ export function HelpScreen() {
               warning disappears and the expense reaches everyone.
             </p>
           </Q>
-          <Q q="Someone appears twice in the trip">
+          <Q q="Someone appears twice in the group">
             <p>
               Two people added them separately. Under <strong>People</strong>, keep one and remove
               the other. Past shares of the removed one stay on the books.
             </p>
           </Q>
-          <Q q="A trip disappeared after reinstalling">
+          <Q q="A group disappeared after reinstalling">
             <p>
-              Your phone&apos;s copy was wiped, but the trip is still stored online. Tap{' '}
+              Your phone&apos;s copy was wiped, but the group is still stored online. Tap{' '}
               <strong>Import</strong> and paste its code from the group chat. Everything comes back,
               including what others added since.
             </p>
@@ -253,18 +276,18 @@ export function HelpScreen() {
             <p>
               On each phone and in Google Firebase, so phones can stay in step. Trips are{' '}
               <strong>end-to-end encrypted</strong>: Firebase holds scrambled text and the key
-              lives only on the phones, inside the trip&apos;s code. A trip&apos;s code therefore
-              works like a <strong>password</strong>: anyone who has it can see and edit that trip,
-              and nobody else can, Google included. Share it only with the people on the trip.
+              lives only on the phones, inside the group&apos;s code. A group&apos;s code therefore
+              works like a <strong>password</strong>: anyone who has it can see and edit that group,
+              and nobody else can, Google included. Share it only with the people in the group.
               There are no accounts or logins.
             </p>
           </Q>
-          <Q q='My trip says "Not encrypted yet"'>
+          <Q q='My group says "Not encrypted yet"'>
             <p>
               It was created before encryption existed. Under <strong>Invite &amp; share</strong>,
               tap <strong>Turn on encryption</strong>. Do it when everyone has opened the app that
               day, then send them the new code; their phones show <strong>Locked</strong> until they
-              import it. New trips are encrypted from the start.
+              import it. New groups are encrypted from the start.
             </p>
           </Q>
         </div>
@@ -280,7 +303,7 @@ export function HelpScreen() {
         </div>
 
         <button className="btn block ghost" onClick={() => back('/')}>
-          Back to trips
+          Back to groups
         </button>
       </div>
     </>

@@ -50,7 +50,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
   const blob = () => new Blob([JSON.stringify(file, null, 0)], { type: 'application/json' })
 
   const link = inviteLink(code)
-  const inviteText = `Join "${trip.name}" on TripSplit. Open this link on your phone and the trip appears, with everything so far:`
+  const inviteText = `Join "${trip.name}" on TripSplit. Open this link on your phone and the group appears, with everything so far:`
 
   /**
    * Text and a URL, never a file. The sheet opens on every phone that has
@@ -75,7 +75,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
       await navigator.clipboard.writeText(link)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
-      setResult({ ok: true, message: 'Link copied. Paste it into WhatsApp or any chat; whoever taps it joins the trip.' })
+      setResult({ ok: true, message: 'Link copied. Paste it into WhatsApp or any chat; whoever taps it joins the group.' })
     } catch {
       setResult({ ok: false, message: 'Could not reach the clipboard. Save the file below and send that instead.' })
     }
@@ -132,7 +132,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
     <>
       <TopBar
         title="Invite & share"
-        subtitle="Bring someone onto this trip, or receive their copy"
+        subtitle="Bring someone into this group, or receive their copy"
         onBack
         backTo={`/trip/${tripId}`}
         backLabel={trip.name}
@@ -141,9 +141,9 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
         <div className="section">
           {key ? (
             <Alert tone="good">
-              <strong>End-to-end encrypted.</strong> Only phones with this trip&apos;s code can read
+              <strong>End-to-end encrypted.</strong> Only phones with this group&apos;s code can read
               it; Firebase stores it as scrambled text. The link carries the key, so share it
-              only with the people on the trip.
+              only with the people in the group.
             </Alert>
           ) : confirmEncrypt ? (
             <div className="card pad">
@@ -176,8 +176,8 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
             </div>
           ) : (
             <Alert tone="warn">
-              <strong>Not encrypted yet.</strong> This trip was created before encryption existed,
-              so Firebase can read it. New trips are encrypted from the start.
+              <strong>Not encrypted yet.</strong> This group was created before encryption existed,
+              so Firebase can read it. New groups are encrypted from the start.
               <button className="link stand" onClick={() => setConfirmEncrypt(true)}>
                 Turn on encryption
               </button>
@@ -191,12 +191,12 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
           </div>
           <div className="card pad">
             <p className="hint" style={{ margin: '0 0 12px' }}>
-              Send them this trip once. After they open it, every phone stays in step by itself —
+              Send them this group once. After they open it, every phone stays in step by itself —
               no more sharing needed.
             </p>
             <button className="btn primary block" onClick={shareLink}>
               <Icon name="share" size={18} />
-              Share this trip
+              Share this group
             </button>
             <div className="spacer" />
             <div className="btn-row">
@@ -223,7 +223,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
           </div>
           <div className="card pad">
             <p className="hint" style={{ margin: '0 0 12px' }}>
-              Got a code or file from someone on this trip? Merge it in. Nothing you already have is
+              Got a code or file from someone on this group? Merge it in. Nothing you already have is
               overwritten, and merging the same copy twice changes nothing.
             </p>
             <label className="btn block" style={{ cursor: 'pointer' }}>
@@ -274,7 +274,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
         )}
 
         <button className="btn block ghost" onClick={() => back(`/trip/${tripId}`)}>
-          Back to trip
+          Back to group
         </button>
       </div>
     </>
@@ -283,7 +283,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
 
 export function describe(s: MergeSummary): string {
   const bits: string[] = []
-  if (s.tripsAdded) bits.push(`${s.tripsAdded} new trip${s.tripsAdded > 1 ? 's' : ''}`)
+  if (s.tripsAdded) bits.push(`${s.tripsAdded} new group${s.tripsAdded > 1 ? 's' : ''}`)
   if (s.membersAdded) bits.push(`${s.membersAdded} new ${s.membersAdded > 1 ? 'people' : 'person'}`)
   if (s.expensesAdded) bits.push(`${s.expensesAdded} new expense${s.expensesAdded > 1 ? 's' : ''}`)
   if (s.expensesChanged) bits.push(`${s.expensesChanged} updated`)
@@ -298,6 +298,6 @@ function slug(name: string): string {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
-      .slice(0, 40) || 'trip'
+      .slice(0, 40) || 'group'
   )
 }

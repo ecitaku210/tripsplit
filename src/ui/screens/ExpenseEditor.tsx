@@ -4,7 +4,7 @@ import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { evaluateAmount, formatMinor, formatMoney, parseAmount } from '../../domain/money'
 import { amountInWords } from '../../domain/words'
 import { isIsoDate } from '../../domain/ledger'
-import { Avatar, Field, Money, NotFound, Segmented, TopBar, firstName } from '../components'
+import { Alert, Avatar, Field, Money, NotFound, Segmented, TopBar, firstName } from '../components'
 import { Icon } from '../icons'
 import { back, leave } from '../router'
 import { useToast } from '../toast'
@@ -12,7 +12,7 @@ import { useSyncStatus } from '../../sync/SyncProvider'
 import { CATEGORIES } from '../categories'
 import { tap } from '../haptics'
 import { firstProblem, type ProblemField } from '../expenseProblems'
-import { liveExpenses, liveMembers } from '../../domain/balance'
+import { liveExpenses, liveMembers, periodOf } from '../../domain/balance'
 import type { Id, SplitMode } from '../../domain/types'
 
 const MODE_OPTIONS: { value: SplitMode; label: string }[] = [
@@ -167,6 +167,24 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
   // An expense id in the URL that this phone has never seen, or that was
   // deleted, must say so rather than silently opening a blank "new expense".
   if (expenseId && !existing) return <NotFound what="expense" />
+  // A closed period is settled on its numbers, so nothing in it may change.
+  if (existing && periodOf(trip, existing)) {
+    return (
+      <>
+        <TopBar title="Closed period" onBack backTo={`/trip/${tripId}/expense/${existing.id}`} backLabel={existing.description || 'Expense'} />
+        <div className="content no-fab">
+          <Alert tone="info">
+            <strong>This expense is in a closed period</strong>, so it cannot be edited. Reopen
+            the period from the group screen, under <strong>Closed periods</strong>, to change it.
+          </Alert>
+          <div className="spacer" />
+          <button className="btn block" onClick={() => back(`/trip/${tripId}/expense/${existing.id}`)}>
+            Back to the expense
+          </button>
+        </div>
+      </>
+    )
+  }
 
   const problem = firstProblem({
     amountText,

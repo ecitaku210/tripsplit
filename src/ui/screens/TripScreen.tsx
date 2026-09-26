@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
-import { computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
+import { closedPeriods, computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
 import { settlementPlan } from '../../domain/settle'
 import { counterpartyLabel, obligationsOf, standingSentence } from '../../domain/standing'
 import { findProbableDuplicates, findProbableDuplicateSettlements } from '../../domain/merge'
@@ -32,6 +32,7 @@ import type { Expense, Id, Trip } from '../../domain/types'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import type { SyncStatus } from '../../sync/engine'
 import { countOf } from '../plural'
+import { CloseBooks, PeriodNote, localIso } from './CloseBooks'
 
 /**
  * Worded for someone standing at a till, not for a developer. The degraded
@@ -53,17 +54,17 @@ const SYNC: Record<
   'too-large': {
     label: 'Too big to sync',
     tone: 'warn',
-    note: 'This trip has outgrown live sync. Pass updates on with Invite & share.',
+    note: 'This group has outgrown live sync. Pass updates on with Invite & share.',
   },
   outdated: {
     label: 'Update needed',
     tone: 'bad',
-    note: 'Someone saved this trip with a newer version. Close the app fully and open it again.',
+    note: 'Someone saved this group with a newer version. Close the app fully and open it again.',
   },
   locked: {
     label: 'Locked',
     tone: 'bad',
-    note: 'This trip is encrypted with a key this phone does not have. Ask someone on the trip to share it again, then import that code.',
+    note: 'This group is encrypted with a key this phone does not have. Ask someone in the group to share it again, then import that code.',
   },
   quota: {
     label: 'Daily limit',
@@ -96,12 +97,12 @@ export function TripScreen({ tripId }: { tripId: Id }) {
         subtitle={countOf(members.length, 'person', 'people')}
         onBack
         backTo="/"
-        backLabel="Trips"
+        backLabel="Groups"
         right={
           <button
             className="btn ghost icon"
             onClick={() => navigate(`/trip/${tripId}/people`)}
-            aria-label="People on this trip"
+            aria-label="People in this group"
           >
             <Icon name="users" size={18} />
             People
@@ -135,7 +136,7 @@ export function TripScreen({ tripId }: { tripId: Id }) {
                 <Icon name="share" size={18} />
               </span>
               <span className="t-title">Invite &amp; share</span>
-              <span className="t-sub">Bring a friend onto this trip, or receive their copy.</span>
+              <span className="t-sub">Bring a friend into this group, or receive their copy.</span>
             </button>
             <button className="tile" onClick={() => navigate(`/trip/${tripId}/settle`)}>
               <span className="ic">
@@ -170,7 +171,7 @@ function BalanceHero({
   me: Id | undefined
   sync: SyncStatus | null
 }) {
-  const { db, setMyself } = useStore()
+  const { db, setMyself, unarchiveTrip } = useStore()
   const encrypted = !!db.keys[trip.id]
   const totals = useMemo(() => computeTotals(trip), [trip])
   const members = liveMembers(trip)
@@ -247,6 +248,15 @@ function BalanceHero({
           <span className="dim"> · {countOf(liveExpenses(trip).length, 'expense', 'expenses')}</span>
         </span>
       </div>
+      <PeriodNote trip={trip} />
+      {db.archived[trip.id] && (
+        <Alert tone="info">
+          <strong>Archived on this phone.</strong> Not checking for updates.{' '}
+          <button className="link stand" onClick={() => unarchiveTrip(trip.id)}>
+            Bring it back
+          </button>
+        </Alert>
+      )}
     </div>
   )
 }
@@ -329,6 +339,109 @@ function groupByDay(expenses: Expense[]): Day[] {
   return days
 }
 
+/**
+ * Closed periods: every stretch that ended with "Close the books", newest
+ * first, folded away. Each opens to its expenses and repayments, read-only,
+ * with a Reopen for the newest in case the closing was a slip.
+ */
+function ClosedPeriods({ trip }: { trip: Trip }) {
+  const { reopenBooks, closeBooks } = useStore()
+  const { show: toast } = useToast()
+  const periods = useMemo(() => closedPeriods(trip), [trip])
+  if (periods.length === 0) return null
+  const shortName = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'Someone')
+  return (
+    <div className="section">
+      <div className="section-head">
+        <h2>Closed periods</h2>
+        <span className="aside">{countOf(periods.length, 'period', 'periods')}</span>
+      </div>
+      {periods.map((p, i) => {
+        const closedOn = shortDate(localIso(p.closing.at))
+        const square = p.totals.balances.every((b) => b.netMinor === 0)
+        return (
+          <details key={p.closing.id} className="howto period">
+            <summary>
+              <Icon name="flag" size={18} />
+              <span className="grow">
+                Closed {closedOn}
+                <span className="dim"> · {countOf(p.expenses.length, 'expense', 'expenses')}</span>
+              </span>
+              <span className="num">{formatMoney(p.totals.totalSpentMinor, trip.currency)}</span>
+              <Icon name="chevron" size={18} className="chev" />
+            </summary>
+            <div className="body">
+              {!square && (
+                <Alert tone="warn">
+                  This period is not square: something arrived after the books were closed.
+                  Reopen it and close again once everyone has settled.
+                </Alert>
+              )}
+              <div className="card">
+                {p.expenses.map((e) => (
+                  <button
+                    key={e.id}
+                    className="row"
+                    onClick={() => navigate(`/trip/${trip.id}/expense/${e.id}`)}
+                  >
+                    {trip.members[e.paidBy] ? <Avatar member={trip.members[e.paidBy]!} small /> : <UnknownAvatar small />}
+                    <div className="grow">
+                      <div className="title">{e.description || 'Expense'}</div>
+                      <div className="meta">
+                        {shortDate(e.date)} · {shortName(e.paidBy)} paid
+                      </div>
+                    </div>
+                    <div className="amount">
+                      <Money amount={e.amountMinor} currency={trip.currency} />
+                    </div>
+                  </button>
+                ))}
+                {p.settlements.map((s) => (
+                  <div key={s.id} className="row static">
+                    <AvatarPair from={trip.members[s.fromMember]} to={trip.members[s.toMember]} />
+                    <div className="grow">
+                      <div className="title pay-line">
+                        <span>{shortName(s.fromMember)}</span>
+                        <Icon name="arrow" size={16} className="arrow" />
+                        <span>{shortName(s.toMember)}</span>
+                      </div>
+                      <div className="meta">{shortDate(s.date)} · repayment</div>
+                    </div>
+                    <div className="amount">
+                      <Money amount={s.amountMinor} currency={trip.currency} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {i === 0 && (
+                <button
+                  className="btn ghost block"
+                  onClick={() => {
+                    const id = p.closing.id
+                    reopenBooks(trip.id, id)
+                    toast('Books reopened. This period counts again.', {
+                      action: {
+                        label: 'Undo',
+                        onClick: () => {
+                          // Re-closing at the same moment keeps the same boundary.
+                          closeBooks(trip.id)
+                        },
+                      },
+                    })
+                  }}
+                >
+                  <Icon name="refresh" size={16} />
+                  Reopen this period
+                </button>
+              )}
+            </div>
+          </details>
+        )
+      })}
+    </div>
+  )
+}
+
 function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
   const { deleteSettlement, restoreSettlement } = useStore()
   const members = useMemo(() => liveMembers(trip), [trip])
@@ -341,12 +454,26 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
   const nameOf = (id: Id) => trip.members[id]?.name ?? 'Someone (removed)'
   const shortName = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'Someone')
 
+  const periods = useMemo(() => closedPeriods(trip), [trip])
+
   if (expenses.length === 0 && settlements.length === 0) {
     return (
-      <Empty icon="receipt" title="No expenses yet">
-        Tap <strong>Add expense</strong> the moment you pay for something — it takes five seconds
-        and saves an argument later.
-      </Empty>
+      <>
+        <Empty icon="receipt" title={periods.length ? 'Fresh count' : 'No expenses yet'}>
+          {periods.length ? (
+            <>
+              The books were closed on <strong>{shortDate(localIso(periods[0]!.closing.at))}</strong>.
+              Anything added now starts from zero.
+            </>
+          ) : (
+            <>
+              Tap <strong>Add expense</strong> the moment you pay for something — it takes five
+              seconds and saves an argument later.
+            </>
+          )}
+        </Empty>
+        <ClosedPeriods trip={trip} />
+      </>
     )
   }
 
@@ -448,6 +575,8 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
           </div>
         </div>
       )}
+
+      <ClosedPeriods trip={trip} />
     </>
   )
 }
@@ -462,14 +591,14 @@ function BalancesTab({ trip }: { trip: Trip }) {
 
   if (totals.balances.length === 0) {
     return (
-      <Empty icon="users" title="Nobody on this trip yet">
+      <Empty icon="users" title="Nobody in this group yet">
         Add people first, then log an expense.
       </Empty>
     )
   }
 
   // The longest bar is the largest debt or credit; everyone else is drawn
-  // relative to it, so the picture says "who carried this trip" at a glance.
+  // relative to it, so the picture says "who carried this group" at a glance.
   const scale = Math.max(1, ...totals.balances.map((b) => Math.abs(b.netMinor)))
 
   return (
@@ -507,9 +636,7 @@ function BalancesTab({ trip }: { trip: Trip }) {
       </div>
       {settled && (
         <div style={{ marginTop: 10 }}>
-          <Alert tone="good">
-            <strong>Everyone is square.</strong> Nothing left to pay.
-          </Alert>
+          <CloseBooks trip={trip} />
         </div>
       )}
       <p className="hint">
