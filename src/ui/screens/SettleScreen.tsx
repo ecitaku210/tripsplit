@@ -218,7 +218,7 @@ function ManualRepayment({ tripId, me }: { tripId: Id; me: Id | undefined }) {
       <div className="section">
         <button className="btn block ghost" onClick={() => setOpen(true)}>
           <Icon name="plus" size={18} />
-          Record a different repayment
+          Paid someone? Record it
         </button>
       </div>
     )

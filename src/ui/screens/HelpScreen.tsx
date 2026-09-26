@@ -207,6 +207,11 @@ export function HelpScreen() {
                 has moved. Only the two people in a payment can record or delete it. Anyone else who
                 taps Record is told so, and nothing is written.
               </li>
+              <li>
+                Paid a part of it, or paid someone the plan did not pair you with? Tap{' '}
+                <strong>Paid someone? Record it</strong> at the bottom of Settle up and enter who
+                paid, who received and the amount. The plan shrinks by what was paid.
+              </li>
             </ol>
           </Q>
           <Q q="We settled up. How do we start a fresh count without deleting the group?">
