@@ -204,8 +204,8 @@ export function HelpScreen() {
               <li>Pay by cash or a transfer app.</li>
               <li>
                 <strong>The person who paid</strong> taps <strong>Record</strong>, once the money
-                has moved. Only the two people in a payment see the button; nobody else can record
-                or delete it.
+                has moved. Only the two people in a payment can record or delete it. Anyone else who
+                taps Record is told so, and nothing is written.
               </li>
             </ol>
           </Q>

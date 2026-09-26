@@ -557,11 +557,18 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                     there was no way at all to take a repayment back. It sits
                     under the amount so the names keep the width they need.
                   */}
-                  {isParty(me, s) && (
                   <button
                     className="btn ghost icon-only"
                     aria-label={`Delete repayment ${nameOf(s.fromMember)} to ${nameOf(s.toMember)}`}
                     onClick={() => {
+                      // Only the payer or the receiver may take a repayment
+                      // back; anyone else is told so and nothing changes.
+                      if (!isParty(me, s)) {
+                        toast(
+                          `Only ${shortName(s.fromMember)} or ${shortName(s.toMember)} can delete this repayment.`,
+                        )
+                        return
+                      }
                       deleteSettlement(trip.id, s.id)
                       toast(`Deleted repayment ${shortName(s.fromMember)} → ${shortName(s.toMember)}`, {
                         action: { label: 'Undo', onClick: () => restoreSettlement(trip.id, s.id) },
@@ -570,7 +577,6 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                   >
                     <Icon name="trash" size={18} />
                   </button>
-                  )}
                 </div>
               </div>
             ))}

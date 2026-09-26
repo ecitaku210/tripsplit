@@ -28,6 +28,11 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
    * happened — so the receipt is kept here and shown back to them.
    */
   const [recorded, setRecorded] = useState<Recorded[]>([])
+  /**
+   * A third person tapping Record gets told why nothing happened, right under
+   * that row. Hiding the button would leave them wondering where it went.
+   */
+  const [refused, setRefused] = useState<string | null>(null)
 
   const totals = useMemo(() => (trip ? computeTotals(trip) : null), [trip])
   const plan = useMemo(() => (totals ? settlementPlan(totals.balances) : []), [totals])
@@ -101,8 +106,9 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
               <div className="card">
                 {plan.map((t) => {
                   const party = isParty(me, t)
+                  const key = `${t.fromMember}>${t.toMember}`
                   return (
-                  <div key={`${t.fromMember}>${t.toMember}`} className="row static">
+                  <div key={key} className="row static wrap">
                     <AvatarPair from={trip.members[t.fromMember]} to={trip.members[t.toMember]} />
                     <div className="grow">
                       <div className="title pay-line">
@@ -116,19 +122,19 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                       <Money amount={t.amountMinor} currency={trip.currency} />
                     {/*
                       Record belongs to the two people the money moves
-                      between. A third phone sees who those are instead of a
-                      button it should not press.
+                      between. A third phone still sees the button, so a tap
+                      can explain why nothing happened instead of the button
+                      being mysteriously missing. Nothing is written.
                     */}
-                    {!party && (
-                      <span className="minor who">
-                        {shortName(t.fromMember)} or {shortName(t.toMember)} records this
-                      </span>
-                    )}
-                    {party && (
                     <button
-                      className="btn icon"
+                      className={party ? 'btn icon' : 'btn icon muted'}
                       onClick={() => {
                         tap()
+                        if (!party) {
+                          setRefused(key)
+                          return
+                        }
+                        setRefused(null)
                         addSettlement(tripId, {
                           fromMember: t.fromMember,
                           toMember: t.toMember,
@@ -149,15 +155,21 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                       <Icon name="check" size={16} />
                       Record
                     </button>
-                    )}
                     </div>
+                    {refused === key && (
+                      <div className="error" role="alert">
+                        {me
+                          ? `Only ${shortName(t.fromMember)} or ${shortName(t.toMember)} can record this payment. Nothing was recorded.`
+                          : 'Pick who you are under People first. Only the two people in a payment can record it.'}
+                      </div>
+                    )}
                   </div>
                   )
                 })}
               </div>
               <p className="hint">
                 Tap <strong>Record</strong> only once the money has actually changed hands, and only
-                on one phone. Only the two people in a payment see the button. It reaches everyone
+                on one phone. Only the two people in a payment can record it. It reaches everyone
                 else as soon as this phone has signal.
               </p>
             </div>
