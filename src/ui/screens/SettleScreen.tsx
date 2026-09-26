@@ -1,13 +1,11 @@
-import { useId, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
-import { computeTotals, liveMembers } from '../../domain/balance'
+import { computeTotals } from '../../domain/balance'
 import { isParty, settlementPlan } from '../../domain/settle'
-import { formatMinor, formatMoney, parseAmount } from '../../domain/money'
-import { amountInWords } from '../../domain/words'
 import { Alert, AvatarPair, Empty, Money, NotFound, TopBar, firstName } from '../components'
 import { Icon } from '../icons'
 import { tap } from '../haptics'
-import { back } from '../router'
+import { back, navigate } from '../router'
 import { CloseBooks } from './CloseBooks'
 import type { Id, Minor } from '../../domain/types'
 
@@ -176,7 +174,12 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
           </>
         )}
 
-        <ManualRepayment tripId={tripId} me={me} />
+        <div className="section">
+          <button className="btn block ghost" onClick={() => navigate(`/trip/${tripId}/repay`)}>
+            <Icon name="plus" size={18} />
+            Paid someone? Record it
+          </button>
+        </div>
 
         <div className="spacer" />
         <button className="btn block ghost" onClick={() => back(`/trip/${tripId}`)}>
@@ -184,133 +187,5 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
         </button>
       </div>
     </>
-  )
-}
-
-function ManualRepayment({ tripId, me }: { tripId: Id; me: Id | undefined }) {
-  const trip = useTrip(tripId)
-  const { addSettlement } = useStore()
-  const [open, setOpen] = useState(false)
-  const [from, setFrom] = useState<Id>('')
-  const [to, setTo] = useState<Id>('')
-  const [amount, setAmount] = useState('')
-  const amountBox = useRef<HTMLInputElement>(null)
-  const uid = useId()
-
-  // Sorted the same way as every other member list in the app, so the order
-  // does not shuffle between screens.
-  const members = useMemo(() => (trip ? liveMembers(trip) : []), [trip])
-
-  if (!trip) return null
-  const decimals = trip.currency.decimals
-  const minor = amount.trim() === '' ? null : parseAmount(amount, decimals)
-
-  // Resolved at render rather than in useState, because the member list is
-  // not known on the very first render of a freshly imported trip.
-  // The reader is the likeliest payer, so they are the default.
-  const fromId = from || (me && members.some((m) => m.id === me) ? me : members[0]?.id) || ''
-  const toId = to || members.find((m) => m.id !== fromId)?.id || ''
-  const party = isParty(me, { fromMember: fromId, toMember: toId })
-  const valid = fromId !== '' && toId !== '' && fromId !== toId && minor !== null && minor > 0 && party
-
-  if (!open) {
-    return (
-      <div className="section">
-        <button className="btn block ghost" onClick={() => setOpen(true)}>
-          <Icon name="plus" size={18} />
-          Paid someone? Record it
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="section">
-      <h2>Record a repayment</h2>
-      <div className="card pad">
-      <div className="field">
-        <label htmlFor={`${uid}-from`}>Who paid</label>
-        <select id={`${uid}-from`} value={fromId} onChange={(e) => setFrom(e.target.value)}>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="field">
-        <label htmlFor={`${uid}-to`}>Who received</label>
-        <select id={`${uid}-to`} value={toId} onChange={(e) => setTo(e.target.value)}>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="field">
-        <label htmlFor={`${uid}-amount`}>Amount ({trip.currency.code})</label>
-        <input
-          id={`${uid}-amount`}
-          ref={amountBox}
-          inputMode="decimal"
-          className="num"
-          value={amount}
-          placeholder={formatMinor(0, decimals)}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </div>
-      {fromId === toId && fromId !== '' && (
-        <div className="error">Pick two different people.</div>
-      )}
-      {fromId !== toId && !party && (
-        <div className="error">
-          {me
-            ? 'You can only record a payment you are part of. Pick yourself as who paid or who received.'
-            : 'Pick who you are under People before recording a payment.'}
-        </div>
-      )}
-      {amount.trim() !== '' && minor === null && (
-        <div className="error">That is not an amount this currency can hold.</div>
-      )}
-      {minor !== null && minor > 0 && (
-        <p className="amount-words" aria-live="polite">
-          <span className="num">{formatMoney(minor, trip.currency)}</span>
-          {' · '}
-          {amountInWords(minor, trip.currency)}
-        </p>
-      )}
-      <div className="btn-row">
-        <button className="btn ghost" onClick={() => setOpen(false)}>
-          Cancel
-        </button>
-        <button
-          className="btn primary"
-          onClick={() => {
-            // Never a dead button: a missing or bad amount gets the cursor.
-            // The two-people mistake already shows its own message above.
-            if (!valid) {
-              if (minor === null || minor <= 0) amountBox.current?.focus()
-              tap()
-              return
-            }
-            if (minor === null) return
-            addSettlement(tripId, {
-              fromMember: fromId,
-              toMember: toId,
-              amountMinor: minor,
-              date: todayISO(),
-              note: '',
-            })
-            setAmount('')
-            setOpen(false)
-          }}
-        >
-          <Icon name="check" size={16} />
-          Record
-        </button>
-      </div>
-      </div>
-    </div>
   )
 }
