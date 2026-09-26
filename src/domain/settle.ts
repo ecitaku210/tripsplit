@@ -60,3 +60,14 @@ export function settlementPlan(balances: MemberBalance[]): Transfer[] {
 
   return transfers
 }
+
+/**
+ * Only the two people a payment is between may record it (or take it back).
+ * `me` is this phone's declared member, or undefined when nobody has been
+ * picked yet. A guard against slips, not against intent: identity is self-
+ * declared under People, so this keeps a third phone from recording a
+ * payment it did not see, not from lying about who it is.
+ */
+export function isParty(me: Id | undefined, t: { fromMember: Id; toMember: Id }): boolean {
+  return me !== undefined && (me === t.fromMember || me === t.toMember)
+}

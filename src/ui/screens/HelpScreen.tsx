@@ -203,8 +203,14 @@ export function HelpScreen() {
               </li>
               <li>Pay by cash or a transfer app.</li>
               <li>
-                <strong>Only the person who paid</strong> taps <strong>Record</strong>, once the
-                money has moved.
+                <strong>The person who paid</strong> taps <strong>Record</strong>, once the money
+                has moved. Only the two people in a payment can record or delete it. Anyone else who
+                taps Record is told so, and nothing is written.
+              </li>
+              <li>
+                Paid a part of it, or paid someone the plan did not pair you with? Tap{' '}
+                <strong>Paid someone? Record it</strong> at the bottom of Settle up and enter who
+                paid, who received and the amount. The plan shrinks by what was paid.
               </li>
             </ol>
           </Q>

@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
-import { settlementPlan } from '../../domain/settle'
+import { isParty, settlementPlan } from '../../domain/settle'
 import { formatMinor, formatMoney, parseAmount } from '../../domain/money'
 import { amountInWords } from '../../domain/words'
 import { Alert, AvatarPair, Empty, Money, NotFound, TopBar, firstName } from '../components'
@@ -19,7 +19,8 @@ interface Recorded {
 
 export function SettleScreen({ tripId }: { tripId: Id }) {
   const trip = useTrip(tripId)
-  const { addSettlement } = useStore()
+  const { db, addSettlement } = useStore()
+  const me = db.identities[tripId]
   /**
    * Recording a payment changes the balances, so that transfer immediately
    * drops out of the plan below. Without this list the row would simply
@@ -27,6 +28,11 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
    * happened — so the receipt is kept here and shown back to them.
    */
   const [recorded, setRecorded] = useState<Recorded[]>([])
+  /**
+   * A third person tapping Record gets told why nothing happened, right under
+   * that row. Hiding the button would leave them wondering where it went.
+   */
+  const [refused, setRefused] = useState<string | null>(null)
 
   const totals = useMemo(() => (trip ? computeTotals(trip) : null), [trip])
   const plan = useMemo(() => (totals ? settlementPlan(totals.balances) : []), [totals])
@@ -87,12 +93,22 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
               </div>
             </div>
 
+            {!me && (
+              <div className="section">
+                <Alert tone="info">
+                  <strong>Pick who you are</strong> under People to record a payment. Only the two
+                  people in a payment can record it.
+                </Alert>
+              </div>
+            )}
             <div className="section">
               <h2>Who pays whom</h2>
               <div className="card">
                 {plan.map((t) => {
+                  const party = isParty(me, t)
+                  const key = `${t.fromMember}>${t.toMember}`
                   return (
-                  <div key={`${t.fromMember}>${t.toMember}`} className="row static">
+                  <div key={key} className="row static wrap">
                     <AvatarPair from={trip.members[t.fromMember]} to={trip.members[t.toMember]} />
                     <div className="grow">
                       <div className="title pay-line">
@@ -104,10 +120,21 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                     </div>
                     <div className="amount">
                       <Money amount={t.amountMinor} currency={trip.currency} />
+                    {/*
+                      Record belongs to the two people the money moves
+                      between. A third phone still sees the button, so a tap
+                      can explain why nothing happened instead of the button
+                      being mysteriously missing. Nothing is written.
+                    */}
                     <button
-                      className="btn icon"
+                      className={party ? 'btn icon' : 'btn icon muted'}
                       onClick={() => {
                         tap()
+                        if (!party) {
+                          setRefused(key)
+                          return
+                        }
+                        setRefused(null)
                         addSettlement(tripId, {
                           fromMember: t.fromMember,
                           toMember: t.toMember,
@@ -129,19 +156,27 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                       Record
                     </button>
                     </div>
+                    {refused === key && (
+                      <div className="error" role="alert">
+                        {me
+                          ? `Only ${shortName(t.fromMember)} or ${shortName(t.toMember)} can record this payment. Nothing was recorded.`
+                          : 'Pick who you are under People first. Only the two people in a payment can record it.'}
+                      </div>
+                    )}
                   </div>
                   )
                 })}
               </div>
               <p className="hint">
                 Tap <strong>Record</strong> only once the money has actually changed hands, and only
-                on one phone. It reaches everyone else as soon as this phone has signal.
+                on one phone. Only the two people in a payment can record it. It reaches everyone
+                else as soon as this phone has signal.
               </p>
             </div>
           </>
         )}
 
-        <ManualRepayment tripId={tripId} />
+        <ManualRepayment tripId={tripId} me={me} />
 
         <div className="spacer" />
         <button className="btn block ghost" onClick={() => back(`/trip/${tripId}`)}>
@@ -152,7 +187,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
   )
 }
 
-function ManualRepayment({ tripId }: { tripId: Id }) {
+function ManualRepayment({ tripId, me }: { tripId: Id; me: Id | undefined }) {
   const trip = useTrip(tripId)
   const { addSettlement } = useStore()
   const [open, setOpen] = useState(false)
@@ -172,16 +207,18 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
 
   // Resolved at render rather than in useState, because the member list is
   // not known on the very first render of a freshly imported trip.
-  const fromId = from || members[0]?.id || ''
+  // The reader is the likeliest payer, so they are the default.
+  const fromId = from || (me && members.some((m) => m.id === me) ? me : members[0]?.id) || ''
   const toId = to || members.find((m) => m.id !== fromId)?.id || ''
-  const valid = fromId !== '' && toId !== '' && fromId !== toId && minor !== null && minor > 0
+  const party = isParty(me, { fromMember: fromId, toMember: toId })
+  const valid = fromId !== '' && toId !== '' && fromId !== toId && minor !== null && minor > 0 && party
 
   if (!open) {
     return (
       <div className="section">
         <button className="btn block ghost" onClick={() => setOpen(true)}>
           <Icon name="plus" size={18} />
-          Record a different repayment
+          Paid someone? Record it
         </button>
       </div>
     )
@@ -225,6 +262,13 @@ function ManualRepayment({ tripId }: { tripId: Id }) {
       </div>
       {fromId === toId && fromId !== '' && (
         <div className="error">Pick two different people.</div>
+      )}
+      {fromId !== toId && !party && (
+        <div className="error">
+          {me
+            ? 'You can only record a payment you are part of. Pick yourself as who paid or who received.'
+            : 'Pick who you are under People before recording a payment.'}
+        </div>
       )}
       {amount.trim() !== '' && minor === null && (
         <div className="error">That is not an amount this currency can hold.</div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { closedPeriods, computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
-import { settlementPlan } from '../../domain/settle'
+import { isParty, settlementPlan } from '../../domain/settle'
 import { counterpartyLabel, obligationsOf, standingSentence } from '../../domain/standing'
 import { findProbableDuplicates, findProbableDuplicateSettlements } from '../../domain/merge'
 import { unsyncableExpenses } from '../../domain/ledger'
@@ -561,6 +561,14 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                     className="btn ghost icon-only"
                     aria-label={`Delete repayment ${nameOf(s.fromMember)} to ${nameOf(s.toMember)}`}
                     onClick={() => {
+                      // Only the payer or the receiver may take a repayment
+                      // back; anyone else is told so and nothing changes.
+                      if (!isParty(me, s)) {
+                        toast(
+                          `Only ${shortName(s.fromMember)} or ${shortName(s.toMember)} can delete this repayment.`,
+                        )
+                        return
+                      }
                       deleteSettlement(trip.id, s.id)
                       toast(`Deleted repayment ${shortName(s.fromMember)} → ${shortName(s.toMember)}`, {
                         action: { label: 'Undo', onClick: () => restoreSettlement(trip.id, s.id) },

@@ -1910,3 +1910,23 @@ details.howto.period .body .card {
 details.howto .body > .trip-card {
   margin-top: 10px;
 }
+
+/* Under the amount on a Settle row a third phone cannot act on: who can. */
+/* A Record button the reader may not press: visibly quieter, still tappable so it can explain itself. */
+.row .amount .btn.muted {
+  opacity: 0.45;
+}
+
+/* A settle row that can carry a one-line warning under the names and amount. */
+.row.wrap {
+  flex-wrap: wrap;
+}
+.row.wrap > .error {
+  flex-basis: 100%;
+  margin-top: 8px;
+}
+
+/* Settle rows: the "who records this" label needs width, so the meta line wraps instead of clipping. */
+.row .pay-line + .meta {
+  white-space: normal;
+}
