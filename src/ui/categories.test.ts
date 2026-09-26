@@ -9,7 +9,7 @@ describe('categoryOf', () => {
     ['Scooter rental', 'travel'],
     ['Villa for two nights', 'stay'],
     ['Flights for everyone', 'tickets'],
-    ['Groceries', 'shopping'],
+    ['Groceries', 'groceries'],
     ['Petrol', 'fuel'],
     ['Pickleball court', 'activity'],
     ['NTF', 'other'],

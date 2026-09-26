@@ -1,6 +1,7 @@
 # TripSplit
 
-A Splitwise-style expense splitter for group trips. It installs on any phone
+A Splitwise-style expense splitter for any group that shares costs: a trip, a
+flat, a running tab between friends. It installs on any phone
 from a browser, syncs live between everyone's phones, keeps working with no
 signal, and needs no account or sign-up.
 
@@ -15,6 +16,9 @@ signal, and needs no account or sign-up.
 - **Live sync** — an expense added on one phone appears on everyone else's in about a second
 - Works offline, and catches up automatically when signal returns
 - Invite people with a link — the phone's own share sheet into WhatsApp, or a file for anything else
+- **Close the books** when everyone is square: the period so far folds away, still readable, and
+  balances start again from zero. For flats and running tabs that never "end"
+- **Archive** a finished group on your phone: hidden from the list, kept, not synced while it sleeps
 
 ---
 
@@ -136,6 +140,24 @@ the same on every phone in the group. Rupee amounts use **Indian grouping**
 (`₹1,50,000`, not `₹150,000`); every other currency groups in thousands.
 
 ---
+
+## Closing the books
+
+A group that keeps going needs a way to say "we are square as of today" without
+deleting anything. A **closing** is a record like any other (id, timestamp,
+tombstone), so it merges and syncs the same way. Everything created before the
+closing belongs to a closed period: read-only, folded away under *Closed
+periods*, with its own totals. Everything after starts from zero. Records are
+assigned by *when they were logged*, never by the date typed on them, so an
+expense added after the closing counts in the new period whatever day it was
+for. Closing is offered only when everyone is square, so a closed period is
+always a finished story; reopening (a tombstone on the closing) puts it back.
+
+A ledger that carries any closing is stamped schema 3. An older app would not
+know the field and would drop it on every write, undoing the closing for the
+whole group; it reads 3 as "newer version" and stands down until it reopens
+and updates. Ledgers without closings keep the old schema, so nothing changes
+for groups that never close their books.
 
 ## Settling up
 

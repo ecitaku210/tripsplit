@@ -1,5 +1,6 @@
 import { gzipSync, gunzipSync, strToU8, strFromU8 } from 'fflate'
 import type {
+  Closing,
   Currency,
   Expense,
   Id,
@@ -9,7 +10,7 @@ import type {
   SplitMode,
   Trip,
 } from './types'
-import { SEALED_SCHEMA, SCHEMA_VERSION } from './types'
+import { LEGACY_SCHEMA, SEALED_SCHEMA, SCHEMA_VERSION } from './types'
 import { isValidMinor } from './money'
 import { stableStringify } from './merge'
 
@@ -219,6 +220,22 @@ function parseExpense(v: unknown): Expense | null {
   }
 }
 
+function parseClosing(v: unknown): Closing | null {
+  if (typeof v !== 'object' || v === null) return null
+  const o = v as Record<string, unknown>
+  const cid = id(o.id)
+  const at = ts(o.at)
+  const updatedAt = ts(o.updatedAt)
+  const createdAt = ts(o.createdAt)
+  const updatedBy = id(o.updatedBy)
+  const deletedAt = tombstone(o.deletedAt)
+  const note = str(o.note, 200) ?? ''
+  if (cid === null || at === null) return null
+  if (updatedAt === null || createdAt === null || updatedBy === null) return null
+  if (deletedAt === undefined) return null
+  return { id: cid, at, note, createdAt, updatedAt, updatedBy, deletedAt }
+}
+
 function parseSettlement(v: unknown): Settlement | null {
   if (typeof v !== 'object' || v === null) return null
   const o = v as Record<string, unknown>
@@ -277,9 +294,11 @@ function parseTrip(v: unknown, warnings: string[]): Trip | null {
     members: {},
     expenses: {},
     settlements: {},
+    closings: {},
   }
 
   collect(o.members, parseMember, trip.members, warnings, `trip "${name}" member`)
+  collect(o.closings, parseClosing, trip.closings, warnings, `trip "${name}" closing`)
   collect(o.expenses, parseExpense, trip.expenses, warnings, `trip "${name}" expense`)
   collect(
     o.settlements,
@@ -483,12 +502,24 @@ export function buildLedgerFile(
   }
   return {
     kind: 'tripsplit.ledger',
-    schema: SCHEMA_VERSION,
+    schema: ledgerSchemaFor(trips),
     exportedAt: Date.now(),
     exportedBy: deviceId,
     trips,
     ...(Object.keys(carried).length > 0 ? { keys: carried } : {}),
   }
+}
+
+/**
+ * The lowest schema that carries everything in these trips. A trip with any
+ * closing, even a reopened one, needs 3; without, the legacy 1 keeps older
+ * phones reading and writing as before.
+ */
+export function ledgerSchemaFor(trips: Record<Id, Trip>): number {
+  for (const t of Object.values(trips)) {
+    if (Object.keys(t.closings ?? {}).length > 0) return SCHEMA_VERSION
+  }
+  return LEGACY_SCHEMA
 }
 
 /** The wire form of a sealed envelope: same transport encoding as a ledger. */

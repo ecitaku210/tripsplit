@@ -11,6 +11,7 @@ import type { Id } from '../../domain/types'
 
 export function PeopleScreen({ tripId }: { tripId: Id }) {
   const trip = useTrip(tripId)
+  const archived = !!useStore().db.archived[tripId]
   const {
     db,
     addMember,
@@ -19,7 +20,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
     restoreMember,
     setMyself,
     renameTrip,
-    deleteTrip,
+    deleteTrip, archiveTrip, unarchiveTrip,
     restoreTrip,
   } = useStore()
   const { show: toast } = useToast()
@@ -29,8 +30,8 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
   const [editing, setEditing] = useState<Id | null>(null)
   const [editName, setEditName] = useState('')
   /**
-   * `null` means "showing whatever the trip is called". A merge can rename the
-   * trip underneath us, and a plain `useState(trip.name)` would keep showing
+   * `null` means "showing whatever the group is called". A merge can rename the
+   * group underneath us, and a plain `useState(trip.name)` would keep showing
    * the stale name forever, with the Save button wrongly greyed out.
    */
   const [draftName, setDraftName] = useState<string | null>(null)
@@ -55,7 +56,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
       />
       <div className="content no-fab">
         <div className="section">
-          <h2>On this trip</h2>
+          <h2>In this group</h2>
           <div className="card">
             {members.map((m) => {
               const net = netOf(m.id)
@@ -168,7 +169,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
             </button>
           </div>
           <p className="hint">
-            Add everyone on one phone, then share the trip — that way the whole group uses the same
+            Add everyone on one phone, then share the group — that way the whole group uses the same
             person records instead of each phone inventing its own.
           </p>
         </div>
@@ -194,11 +195,11 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
         </div>
 
         <div className="section">
-          <h2>Trip name</h2>
+          <h2>Group name</h2>
           <div className="inline">
             <input
               ref={tripNameBox}
-              aria-label="Trip name"
+              aria-label="Group name"
               value={tripName}
               maxLength={120}
               onChange={(e) => setDraftName(e.target.value)}
@@ -224,6 +225,38 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
         </div>
 
         <div className="section">
+          {archived ? (
+            <button
+              className="btn block"
+              onClick={() => {
+                unarchiveTrip(trip.id)
+                toast(`${trip.name} is back on your list`)
+              }}
+            >
+              <Icon name="refresh" size={18} />
+              Bring back from Archived
+            </button>
+          ) : (
+            <button
+              className="btn block"
+              onClick={() => {
+                archiveTrip(trip.id)
+                reset('/')
+                toast(`Archived ${trip.name}. Find it under Archived on the home screen.`)
+              }}
+            >
+              <Icon name="archive" size={18} />
+              Archive this group
+            </button>
+          )}
+          <p className="hint">
+            Archiving puts a finished trip away on this phone only: it stays readable under{' '}
+            <strong>Archived</strong> on the home screen, keeps everything, and stops checking
+            for updates. Nobody else is affected.
+          </p>
+        </div>
+
+        <div className="section">
           <button
             className="btn danger block"
             onClick={() => {
@@ -242,7 +275,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
             }}
           >
             <Icon name="trash" size={18} />
-            Delete this trip
+            Delete this group
           </button>
         </div>
       </div>

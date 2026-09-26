@@ -75,11 +75,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const seenKeys = useRef<Record<Id, string | undefined>>({})
   const trips = store.db.trips
   const keys = store.db.keys
+  const archived = store.db.archived
   useEffect(() => {
     if (!engine) return
     const next: Record<Id, Trip> = {}
     for (const [id, trip] of Object.entries(trips)) {
       if (trip.deletedAt !== null) continue
+      // An archived trip sleeps: no listener, no reads, until it is brought back.
+      if (id in archived) continue
       next[id] = trip
       if (!seen.current[id]) engine.watch(id)
       else if (seen.current[id] !== trip || seenKeys.current[id] !== keys[id]) engine.changed(id)
@@ -87,7 +90,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
     for (const id of Object.keys(seen.current)) if (!next[id]) engine.unwatch(id)
     seen.current = next
-  }, [engine, trips, keys])
+  }, [engine, trips, keys, archived])
 
   // Back online, or back on screen: push anything that piled up. Phones
   // freeze a backgrounded app's timers, so returning to it is the moment a

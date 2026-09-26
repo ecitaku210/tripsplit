@@ -8,6 +8,7 @@ import { Alert, AvatarPair, Empty, Money, NotFound, TopBar, firstName } from '..
 import { Icon } from '../icons'
 import { tap } from '../haptics'
 import { back } from '../router'
+import { CloseBooks } from './CloseBooks'
 import type { Id, Minor } from '../../domain/types'
 
 interface Recorded {
@@ -62,10 +63,15 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
         )}
 
         {plan.length === 0 ? (
-          <Empty icon="check" title="Nothing to settle">
-            Everyone is square. If anyone has been offline, check again once they reconnect so
-            their latest expenses are included.
-          </Empty>
+          <>
+            <Empty icon="check" title="Nothing to settle">
+              Everyone is square. If anyone has been offline, check again once they reconnect so
+              their latest expenses are included.
+            </Empty>
+            <div className="section">
+              <CloseBooks trip={trip} onClosed={() => back(`/trip/${tripId}`)} />
+            </div>
+          </>
         ) : (
           <>
             <div className="section">
@@ -139,7 +145,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
 
         <div className="spacer" />
         <button className="btn block ghost" onClick={() => back(`/trip/${tripId}`)}>
-          Back to trip
+          Back to group
         </button>
       </div>
     </>

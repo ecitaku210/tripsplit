@@ -11,7 +11,7 @@ import { Icon, type IconName } from './icons'
  * the teal glow. It has no back arrow because there is nowhere back to go.
  *
  * Every SUB-SCREEN gets a compact sticky bar whose left side is a pill
- * naming the screen it came from ("‹ Goa Trip"), then the screen's own
+ * naming the screen it came from ("‹ Goa Group"), then the screen's own
  * title, large, in the page itself. The parent's name in the back pill is
  * what makes the hierarchy legible: you see at once that "Settle up"
  * belongs to Goa Trip, and that Goa Trip belongs to Trips.
@@ -30,7 +30,7 @@ export function TopBar({
   onBack?: boolean
   /** Where "back" lands when this screen was opened from a link or refresh. */
   backTo?: string
-  /** The parent screen's name, shown in the back pill. Defaults to "Trips". */
+  /** The parent screen's name, shown in the back pill. Defaults to "Groups". */
   backLabel?: string
   right?: ReactNode
   /** The home variant: app mark and wordmark, no back. */
@@ -58,7 +58,7 @@ export function TopBar({
         {onBack ? (
           <button className="btn ghost backpill" onClick={() => back(backTo)} aria-label="Go back">
             <Icon name="back" size={18} />
-            <span className="parent">{backLabel ?? 'Trips'}</span>
+            <span className="parent">{backLabel ?? 'Groups'}</span>
           </button>
         ) : (
           <span className="grow" />
@@ -134,7 +134,7 @@ export function AvatarPair({ from, to }: { from: Member | undefined; to: Member 
   )
 }
 
-/** Overlapping small avatars: "who is on this trip" at a glance. */
+/** Overlapping small avatars: "who is on this group" at a glance. */
 export function AvatarStack({ members, max = 4 }: { members: Member[]; max?: number }) {
   const shown = members.slice(0, max)
   const rest = members.length - shown.length
@@ -155,7 +155,7 @@ export function Money({
 }: {
   amount: Minor
   currency: Currency
-  /** Colours the value green/red. Off for neutral totals like "trip spend". */
+  /** Colours the value green/red. Off for neutral totals like "group spend". */
   signed?: boolean
 }) {
   const tone = !signed ? '' : amount > 0 ? ' pos' : amount < 0 ? ' neg' : ' zero'
@@ -181,14 +181,14 @@ export function verdict(netMinor: Minor): { tone: 'pos' | 'neg' | 'zero'; label:
 export function NotFound({ what }: { what: 'trip' | 'expense' }) {
   return (
     <>
-      <TopBar title={what === 'trip' ? 'Trip not found' : 'Expense not found'} onBack backTo="/" />
+      <TopBar title={what === 'trip' ? 'Group not found' : 'Expense not found'} onBack backTo="/" />
       <div className="content no-fab">
         <Empty icon="info" title={`That ${what} is not on this phone`}>
           It was deleted here, or it lives on someone else&apos;s phone and you have not imported
           their copy yet.
         </Empty>
         <button className="btn block" onClick={() => (window.location.hash = '/')}>
-          Back to trips
+          Back to groups
         </button>
       </div>
     </>

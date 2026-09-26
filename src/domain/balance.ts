@@ -1,4 +1,4 @@
-import type { Expense, Id, Minor, Settlement, Trip } from './types'
+import type { Closing, Expense, Id, Minor, Settlement, Trip } from './types'
 import { computeSplit } from './split'
 
 export interface MemberBalance {
@@ -28,16 +28,83 @@ export interface TripTotals {
   problems: { expenseId: Id; message: string }[]
 }
 
-export function liveExpenses(trip: Trip): Expense[] {
+/**
+ * PERIODS. A closing draws a line under the books at a moment in time.
+ * Records are assigned to periods by `createdAt`, the moment they were
+ * logged, never by their user-typed date: an expense added after the
+ * closing is new money owed, whatever day it was for. The current period
+ * is everything after the latest live closing; each closed period runs
+ * from the closing before it up to and including its own moment.
+ */
+export interface Window {
+  /** Exclusive lower bound on createdAt. */
+  after: number
+  /** Inclusive upper bound on createdAt. */
+  upTo: number
+}
+
+export function liveClosings(trip: Trip): Closing[] {
+  return Object.values(trip.closings ?? {})
+    .filter((c) => c.deletedAt === null)
+    .sort((a, b) => b.at - a.at || (a.id < b.id ? -1 : 1))
+}
+
+/** The moment the current period began: the latest live closing, or the dawn of time. */
+export function periodStart(trip: Trip): number {
+  return liveClosings(trip)[0]?.at ?? 0
+}
+
+export function currentWindow(trip: Trip): Window {
+  return { after: periodStart(trip), upTo: Number.POSITIVE_INFINITY }
+}
+
+const within = (w: Window) => (r: { createdAt: number }) => r.createdAt > w.after && r.createdAt <= w.upTo
+
+/** Expenses in a period, newest first. Defaults to the current period. */
+export function liveExpenses(trip: Trip, w: Window = currentWindow(trip)): Expense[] {
   return Object.values(trip.expenses)
     .filter((e) => e.deletedAt === null)
+    .filter(within(w))
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
 }
 
-export function liveSettlements(trip: Trip): Settlement[] {
+/** Repayments in a period, newest first. Defaults to the current period. */
+export function liveSettlements(trip: Trip, w: Window = currentWindow(trip)): Settlement[] {
   return Object.values(trip.settlements)
     .filter((s) => s.deletedAt === null)
+    .filter(within(w))
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
+}
+
+export interface ClosedPeriod {
+  closing: Closing
+  window: Window
+  expenses: Expense[]
+  settlements: Settlement[]
+  totals: TripTotals
+}
+
+/** Every closed period, newest first, each with its own records and totals. */
+export function closedPeriods(trip: Trip): ClosedPeriod[] {
+  const closings = liveClosings(trip)
+  return closings.map((closing, i) => {
+    const window: Window = { after: closings[i + 1]?.at ?? 0, upTo: closing.at }
+    return {
+      closing,
+      window,
+      expenses: liveExpenses(trip, window),
+      settlements: liveSettlements(trip, window),
+      totals: computeTotals(trip, window),
+    }
+  })
+}
+
+/** Which period a record belongs to: `null` for the current one, else its closing. */
+export function periodOf(trip: Trip, record: { createdAt: number }): Closing | null {
+  // Oldest first: a record belongs to the first closing drawn after it.
+  const oldestFirst = [...liveClosings(trip)].reverse()
+  for (const c of oldestFirst) if (record.createdAt <= c.at) return c
+  return null
 }
 
 export function liveMembers(trip: Trip) {
@@ -59,7 +126,7 @@ export function liveMembers(trip: Trip) {
  * between members, never created. `assertBalanced` checks this, and the test
  * suite asserts it over randomised ledgers.
  */
-export function computeTotals(trip: Trip): TripTotals {
+export function computeTotals(trip: Trip, w: Window = currentWindow(trip)): TripTotals {
   const members = liveMembers(trip)
   const index = new Map<Id, MemberBalance>()
   for (const m of members) {
@@ -76,7 +143,7 @@ export function computeTotals(trip: Trip): TripTotals {
   const problems: TripTotals['problems'] = []
   let totalSpentMinor = 0
 
-  for (const expense of liveExpenses(trip)) {
+  for (const expense of liveExpenses(trip, w)) {
     // A member removed after an expense was logged still has to carry their
     // share, otherwise deleting a person would quietly rewrite history.
     // So we look up by id and tolerate a missing (deleted) member by
@@ -98,7 +165,7 @@ export function computeTotals(trip: Trip): TripTotals {
     }
   }
 
-  for (const s of liveSettlements(trip)) {
+  for (const s of liveSettlements(trip, w)) {
     if (s.fromMember === s.toMember) continue
     if (s.amountMinor <= 0) continue
     const from = index.get(s.fromMember) ?? ensureRow(index, s.fromMember)

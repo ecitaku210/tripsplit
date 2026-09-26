@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import { useStore, useTrip } from '../../storage/store'
+import { periodOf } from '../../domain/balance'
+import { localIso } from './CloseBooks'
 import { computeSplit } from '../../domain/split'
 import { formatMoney } from '../../domain/money'
 import { Alert, Avatar, Money, NotFound, TopBar, UnknownAvatar, firstName, shortDate } from '../components'
@@ -27,6 +29,9 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
   if (!expense || expense.deletedAt !== null) return <NotFound what="expense" />
 
   const me = db.identities[tripId]
+  // In a closed period nothing may change: the period was settled on the
+  // numbers as they stood. Reopening it from the group screen unlocks it.
+  const closed = periodOf(trip, expense)
   const payer = trip.members[expense.paidBy]
   const line = myLineOn(expense, me, trip.currency)
   const total = expense.parts.reduce((a, p) => a + Math.max(p.weight, 0), 0)
@@ -52,17 +57,28 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
         backTo={`/trip/${tripId}`}
         backLabel={trip.name}
         right={
-          <button
-            className="btn ghost icon"
-            onClick={() => navigate(`/trip/${tripId}/expense/${expenseId}/edit`)}
-            aria-label="Edit expense"
-          >
-            <Icon name="edit" size={18} />
-            Edit
-          </button>
+          closed ? undefined : (
+            <button
+              className="btn ghost icon"
+              onClick={() => navigate(`/trip/${tripId}/expense/${expenseId}/edit`)}
+              aria-label="Edit expense"
+            >
+              <Icon name="edit" size={18} />
+              Edit
+            </button>
+          )
         }
       />
       <div className="content no-fab">
+        {closed && (
+          <div className="section">
+            <Alert tone="info">
+              <strong>Closed period.</strong> The books were closed on{' '}
+              {shortDate(localIso(closed.at))} with this counted in, so it cannot be changed.
+              Reopen the period from the group screen to edit it.
+            </Alert>
+          </div>
+        )}
         <div className="section">
           <div className="hero detail">
             <p className="kicker">{splitModeLabel(expense.splitMode, expense.parts.length)}</p>
@@ -125,13 +141,15 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
           </p>
         </div>
 
-        <button
-          className="btn block"
-          onClick={() => navigate(`/trip/${tripId}/expense/${expenseId}/edit`)}
-        >
-          <Icon name="edit" size={18} />
-          Edit expense
-        </button>
+        {!closed && (
+          <button
+            className="btn block"
+            onClick={() => navigate(`/trip/${tripId}/expense/${expenseId}/edit`)}
+          >
+            <Icon name="edit" size={18} />
+            Edit expense
+          </button>
+        )}
       </div>
     </>
   )

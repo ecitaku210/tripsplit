@@ -34,6 +34,7 @@ export function makeTrip(id = 'trip-0001', members: Member[] = []): Trip {
     members: Object.fromEntries(members.map((m) => [m.id, m])),
     expenses: {},
     settlements: {},
+    closings: {},
   }
 }
 

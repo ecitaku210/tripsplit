@@ -88,6 +88,23 @@ export interface Settlement extends Versioned {
   createdAt: number
 }
 
+/**
+ * A line drawn under the books. Everything created before `at` belongs to
+ * a closed period: it stays readable, counts for nothing, and cannot be
+ * edited. Everything after starts from zero. A household that settles up
+ * monthly closes the books each time; a finished trip closes them once.
+ *
+ * Only ever recorded when everyone is square, so a closed period is a
+ * complete story: what was spent, who paid, and that it was settled.
+ */
+export interface Closing extends Versioned {
+  id: Id
+  /** The boundary, wall-clock ms. Records with createdAt > at are current. */
+  at: number
+  note: string
+  createdAt: number
+}
+
 export interface Trip extends Versioned {
   id: Id
   name: string
@@ -96,10 +113,24 @@ export interface Trip extends Versioned {
   members: Record<Id, Member>
   expenses: Record<Id, Expense>
   settlements: Record<Id, Settlement>
+  closings: Record<Id, Closing>
 }
 
-/** Bumped only when a change would break older replicas' ability to merge. */
-export const SCHEMA_VERSION = 1
+/**
+ * The newest ledger format this app reads and writes. Bumped only when a
+ * change would break older replicas' ability to merge.
+ *
+ * 1  the original format
+ * 2  reserved: the encrypted envelope on the wire (SEALED_SCHEMA)
+ * 3  trips may carry `closings`. An app that does not know them would drop
+ *    them on every write and undo a closing for the whole group, so a
+ *    ledger that carries any is stamped 3 and older apps stand down with
+ *    "Update needed" until they reopen and update.
+ */
+export const SCHEMA_VERSION = 3
+
+/** What a ledger claims when no trip in it carries closings: older apps read it as before. */
+export const LEGACY_SCHEMA = 1
 
 /**
  * The schema an ENCRYPTED document claims on the wire. Deliberately above
@@ -138,4 +169,11 @@ export interface Database {
    * existed) syncs as before until someone turns encryption on for it.
    */
   keys: Record<Id, string>
+  /**
+   * Trips this phone has put away, tripId -> when. Personal, never synced:
+   * "I am done looking at this" is a view, not a fact about the trip. An
+   * archived trip stays readable and keeps its data; it is hidden from the
+   * main list and not watched live, so it costs nothing while it sleeps.
+   */
+  archived: Record<Id, number>
 }

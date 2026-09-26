@@ -90,7 +90,7 @@ export function ImportScreen({ payload }: { payload: string | null }) {
 
   return (
     <>
-      <TopBar title="Import a trip" subtitle="Paste a code or open a file" onBack backTo="/" />
+      <TopBar title="Import a group" subtitle="Paste a code or open a file" onBack backTo="/" />
       <div className="content no-fab">
         <div className="section">
           <Alert tone="info">
@@ -151,9 +151,9 @@ export function ImportScreen({ payload }: { payload: string | null }) {
               <>
                 <div className="spacer" />
                 <Alert tone="warn">
-                  <strong>Opened inside WhatsApp?</strong> Then the trip landed in its built-in
+                  <strong>Opened inside WhatsApp?</strong> Then the group landed in its built-in
                   browser, not in TripSplit on your home screen. Tap <strong>⋯</strong>, choose{' '}
-                  <strong>Open in Safari</strong>, and the trip follows.
+                  <strong>Open in Safari</strong>, and the group follows.
                 </Alert>
               </>
             )}
@@ -164,7 +164,7 @@ export function ImportScreen({ payload }: { payload: string | null }) {
                   className="btn primary block"
                   onClick={() => navigate(`/trip/${result.tripId}`)}
                 >
-                  Open the trip
+                  Open the group
                   <Icon name="arrow" size={18} />
                 </button>
               </>
@@ -173,7 +173,7 @@ export function ImportScreen({ payload }: { payload: string | null }) {
         )}
 
         <button className="btn block ghost" onClick={() => navigate('/')}>
-          Back to trips
+          Back to groups
         </button>
       </div>
     </>
