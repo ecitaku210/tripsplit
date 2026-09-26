@@ -932,6 +932,41 @@ button.link {
   box-shadow: 0 14px 34px -8px rgba(0, 0, 0, 0.6), var(--shadow-glow);
 }
 
+/* Two thumb buttons in the fab's place: the primary one wider, both one tap. */
+.fab-bar {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--safe-bottom) + 18px);
+  z-index: 30;
+  display: flex;
+  gap: 10px;
+  max-width: 528px;
+  margin-inline: auto;
+}
+.fab-bar .fab {
+  position: static;
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  padding: 0 10px;
+  font-size: 1rem;
+}
+/* The glyph must never be the thing that gives way when the label is wide. */
+.fab-bar .fab svg {
+  flex: none;
+}
+.fab-bar .fab.secondary {
+  background: var(--surface-2);
+  box-shadow: 0 14px 34px -8px rgba(0, 0, 0, 0.6);
+}
+/* Very narrow phones: the words matter more than the glyphs. */
+@media (max-width: 360px) {
+  .fab-bar .fab svg {
+    display: none;
+  }
+}
+
 /* ---------- forms ---------- */
 
 .field {

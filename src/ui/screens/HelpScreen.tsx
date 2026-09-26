@@ -209,8 +209,9 @@ export function HelpScreen() {
               </li>
               <li>
                 Paid a part of it, or paid someone the plan did not pair you with? Tap{' '}
-                <strong>Paid someone? Record it</strong> at the bottom of Settle up and enter who
-                paid, who received and the amount. The plan shrinks by what was paid.
+                <strong>Paid someone</strong> next to Add expense on the group screen (it is also at
+                the bottom of Settle up) and enter who paid, who received and the amount. The plan
+                shrinks by what was paid.
               </li>
             </ol>
           </Q>

@@ -15,6 +15,7 @@ export type Route =
   /** `expenseId` null is a new expense. `edit` opens the form; otherwise the detail view. */
   | { name: 'expense'; tripId: string; expenseId: string | null; edit: boolean }
   | { name: 'settle'; tripId: string }
+  | { name: 'repay'; tripId: string }
   | { name: 'share'; tripId: string }
   | { name: 'people'; tripId: string }
   | { name: 'import'; payload: string | null }
@@ -36,6 +37,8 @@ export function parseHash(hash: string): Route {
         return { name: 'trip', tripId }
       case 'settle':
         return { name: 'settle', tripId }
+      case 'repay':
+        return { name: 'repay', tripId }
       case 'share':
         return { name: 'share', tripId }
       case 'people':

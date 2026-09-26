@@ -6,6 +6,7 @@ import { TripScreen } from './screens/TripScreen'
 import { ExpenseEditor } from './screens/ExpenseEditor'
 import { ExpenseDetail } from './screens/ExpenseDetail'
 import { SettleScreen } from './screens/SettleScreen'
+import { RepayScreen } from './screens/RepayScreen'
 import { ShareScreen } from './screens/ShareScreen'
 import { PeopleScreen } from './screens/PeopleScreen'
 import { ImportScreen } from './screens/ImportScreen'
@@ -53,6 +54,8 @@ function Routes({ route }: { route: Route }) {
       )
     case 'settle':
       return <SettleScreen tripId={route.tripId} />
+    case 'repay':
+      return <RepayScreen tripId={route.tripId} />
     case 'share':
       return <ShareScreen tripId={route.tripId} />
     case 'people':

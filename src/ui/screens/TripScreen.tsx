@@ -149,10 +149,21 @@ export function TripScreen({ tripId }: { tripId: Id }) {
         </div>
       </div>
 
-      <button className="btn primary fab" onClick={() => navigate(`/trip/${tripId}/expense/new`)}>
-        <Icon name="plus" size={20} />
-        Add expense
-      </button>
+      {/*
+        The two things people do most, side by side at the thumb: log a
+        shared cost, or say that money changed hands. Before, recording a
+        payment meant knowing it lived at the bottom of Settle up.
+      */}
+      <div className="fab-bar">
+        <button className="btn primary fab" onClick={() => navigate(`/trip/${tripId}/expense/new`)}>
+          <Icon name="plus" size={20} />
+          Add expense
+        </button>
+        <button className="btn fab secondary" onClick={() => navigate(`/trip/${tripId}/repay`)}>
+          <Icon name="handshake" size={20} />
+          Paid someone
+        </button>
+      </div>
     </>
   )
 }
