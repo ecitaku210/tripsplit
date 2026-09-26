@@ -2,7 +2,9 @@ import { useId, useRef, useState } from 'react'
 import { useStore } from '../../storage/store'
 import { computeTotals, liveExpenses, liveMembers } from '../../domain/balance'
 import { DEFAULT_CURRENCIES, formatMoney } from '../../domain/money'
-import { Alert, AvatarStack, Empty, Field, TopBar, verdict } from '../components'
+import { Alert, AvatarStack, Empty, Field, TopBar, firstName, verdict } from '../components'
+import { settlementPlan } from '../../domain/settle'
+import { cardVerdict, obligationsOf } from '../../domain/standing'
 import { Icon } from '../icons'
 import { navigate } from '../router'
 import type { Currency, Trip } from '../../domain/types'
@@ -150,16 +152,20 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
     // are".
     verdictNode = <span className="verdict ask">Who are you? Tap to pick</span>
   } else {
-    const v = verdict(mine.netMinor)
+    // "You owe Bhavya ₹11.50", not "You owe ₹11.50": the name is the
+    // action. Read from the same plan Settle up shows.
+    const nameOf = (id: string) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'someone')
+    const v = cardVerdict(obligationsOf(settlementPlan(totals.balances), me!), mine.netMinor, nameOf)
     verdictNode = (
       <span className={`verdict ${v.tone}`}>
-        {v.label}
+        {v.before}
         {mine.netMinor !== 0 && (
           <>
             {' '}
             <span className="num">{formatMoney(Math.abs(mine.netMinor), trip.currency)}</span>
           </>
         )}
+        {v.after && ` ${v.after}`}
       </span>
     )
   }

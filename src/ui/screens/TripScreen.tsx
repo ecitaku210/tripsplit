@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
+import { settlementPlan } from '../../domain/settle'
+import { counterpartyLabel, obligationsOf, standingSentence } from '../../domain/standing'
 import { findProbableDuplicates, findProbableDuplicateSettlements } from '../../domain/merge'
 import { unsyncableExpenses } from '../../domain/ledger'
 import { formatMoney } from '../../domain/money'
@@ -173,6 +175,9 @@ function BalanceHero({
   const totals = useMemo(() => computeTotals(trip), [trip])
   const members = liveMembers(trip)
   const mine = me ? totals.balances.find((b) => b.memberId === me) : undefined
+  // The same plan Settle up shows, so the names here and there always agree.
+  const plan = useMemo(() => settlementPlan(totals.balances), [totals])
+  const nameOf = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'someone')
   const note = sync ? SYNC[sync].note : undefined
 
   return (
@@ -188,13 +193,11 @@ function BalanceHero({
               ? 'All settled'
               : formatMoney(Math.abs(mine.netMinor), trip.currency)}
           </p>
-          <p className="lede">
-            {mine.netMinor > 0
-              ? 'The group owes you this much.'
-              : mine.netMinor < 0
-                ? 'You owe the group this much.'
-                : 'You have paid exactly your share.'}
-          </p>
+          {/*
+            Who, not "the group": a person can act on "Pay Bhavya ₹11.50"
+            and cannot act on "you owe the group".
+          */}
+          <p className="lede">{standingSentence(obligationsOf(plan, me!), nameOf, trip.currency)}</p>
         </>
       ) : (
         <>
@@ -452,6 +455,8 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
 function BalancesTab({ trip }: { trip: Trip }) {
   const { db } = useStore()
   const totals = useMemo(() => computeTotals(trip), [trip])
+  const plan = useMemo(() => settlementPlan(totals.balances), [totals])
+  const nameOf = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'someone')
   const me = db.identities[trip.id]
   const settled = totals.balances.every((b) => b.netMinor === 0)
 
@@ -473,8 +478,7 @@ function BalancesTab({ trip }: { trip: Trip }) {
       <div className="card">
         {totals.balances.map((b) => {
           const member = trip.members[b.memberId]
-          const label =
-            b.netMinor > 0 ? 'is owed' : b.netMinor < 0 ? 'owes the group' : 'all square'
+          const label = counterpartyLabel(obligationsOf(plan, b.memberId), nameOf)
           const tone = b.netMinor > 0 ? 'pos' : b.netMinor < 0 ? 'neg' : 'zero'
           const width = Math.round((Math.abs(b.netMinor) / scale) * 100)
           return (
