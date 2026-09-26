@@ -1910,3 +1910,16 @@ details.howto.period .body .card {
 details.howto .body > .trip-card {
   margin-top: 10px;
 }
+
+/* Under the amount on a Settle row a third phone cannot act on: who can. */
+.row .amount .minor.who {
+  max-width: 132px;
+  white-space: normal;
+  text-align: right;
+  line-height: 1.3;
+}
+
+/* Settle rows: the "who records this" label needs width, so the meta line wraps instead of clipping. */
+.row .pay-line + .meta {
+  white-space: normal;
+}

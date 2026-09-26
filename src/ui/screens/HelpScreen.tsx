@@ -203,8 +203,9 @@ export function HelpScreen() {
               </li>
               <li>Pay by cash or a transfer app.</li>
               <li>
-                <strong>Only the person who paid</strong> taps <strong>Record</strong>, once the
-                money has moved.
+                <strong>The person who paid</strong> taps <strong>Record</strong>, once the money
+                has moved. Only the two people in a payment see the button; nobody else can record
+                or delete it.
               </li>
             </ol>
           </Q>

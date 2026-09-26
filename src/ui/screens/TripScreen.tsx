@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { closedPeriods, computeTotals, liveExpenses, liveMembers, liveSettlements } from '../../domain/balance'
-import { settlementPlan } from '../../domain/settle'
+import { isParty, settlementPlan } from '../../domain/settle'
 import { counterpartyLabel, obligationsOf, standingSentence } from '../../domain/standing'
 import { findProbableDuplicates, findProbableDuplicateSettlements } from '../../domain/merge'
 import { unsyncableExpenses } from '../../domain/ledger'
@@ -557,6 +557,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                     there was no way at all to take a repayment back. It sits
                     under the amount so the names keep the width they need.
                   */}
+                  {isParty(me, s) && (
                   <button
                     className="btn ghost icon-only"
                     aria-label={`Delete repayment ${nameOf(s.fromMember)} to ${nameOf(s.toMember)}`}
@@ -569,6 +570,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                   >
                     <Icon name="trash" size={18} />
                   </button>
+                  )}
                 </div>
               </div>
             ))}

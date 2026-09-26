@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computeTotals } from './balance'
-import { settlementPlan } from './settle'
+import { isParty, settlementPlan } from './settle'
 import { randomTrip } from './testkit'
 import type { MemberBalance } from './balance'
 
@@ -70,5 +70,17 @@ describe('settlementPlan', () => {
       const plan = settlementPlan(computeTotals(randomTrip(seed)).balances)
       expect(plan.every((t) => t.amountMinor > 0)).toBe(true)
     }
+  })
+})
+
+describe('isParty', () => {
+  const t = { fromMember: 'tarun', toMember: 'bhavya', amountMinor: 1150 }
+  it('the payer and the receiver may record it', () => {
+    expect(isParty('tarun', t)).toBe(true)
+    expect(isParty('bhavya', t)).toBe(true)
+  })
+  it('nobody else may, and nor may a phone with no name picked', () => {
+    expect(isParty('urvashi', t)).toBe(false)
+    expect(isParty(undefined, t)).toBe(false)
   })
 })
