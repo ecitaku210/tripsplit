@@ -327,3 +327,19 @@ export function shortDate(iso: string): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   return `${d} ${months[m - 1]}`
 }
+
+/**
+ * An explanation on demand. The screens used to carry every lesson in full;
+ * now the lesson sits behind one small line and opens only when wanted.
+ */
+export function Why({ label = 'Why?', children }: { label?: string; children: ReactNode }) {
+  return (
+    <details className="why">
+      <summary>
+        <Icon name="info" size={14} />
+        {label}
+      </summary>
+      <p>{children}</p>
+    </details>
+  )
+}

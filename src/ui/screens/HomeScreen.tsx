@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import { useStore } from '../../storage/store'
-import { computeTotals, liveExpenses, liveMembers } from '../../domain/balance'
+import { computeTotals, liveMembers } from '../../domain/balance'
 import { DEFAULT_CURRENCIES, formatMoney } from '../../domain/money'
 import { Alert, AvatarStack, Empty, Field, TopBar, firstName, verdict } from '../components'
 import { settlementPlan } from '../../domain/settle'
@@ -9,7 +9,6 @@ import { Icon } from '../icons'
 import { navigate } from '../router'
 import type { Currency, Trip } from '../../domain/types'
 import { countOf } from '../plural'
-import { timeAgo } from '../dates'
 import { tap } from '../haptics'
 
 export function HomeScreen() {
@@ -93,10 +92,6 @@ export function HomeScreen() {
                 Import
               </button>
             </div>
-            <p className="hint">
-              Someone sent you a group? <strong>Import</strong> it once, and it stays in step from
-              then on.
-            </p>
           </div>
         )}
 
@@ -118,40 +113,6 @@ export function HomeScreen() {
           </div>
         )}
 
-        <div className="section">
-          <button className="tile wide" onClick={() => navigate('/help')}>
-            <span className="ic">
-              <Icon name="info" size={18} />
-            </span>
-            <span className="t-title">Help &amp; FAQ</span>
-            <span className="t-sub">
-              How to install on iPhone or Android, join a group, split a bill and settle up.
-            </span>
-          </button>
-          <div className="spacer" />
-          <details className="howto">
-            <summary>
-              <Icon name="wifi" size={18} />
-              How syncing and privacy work
-              <Icon name="chevron" size={18} className="chev" />
-            </summary>
-            <div className="body">
-              <p>
-                <strong>Groups sync live</strong> between everyone&apos;s phones through Google
-                Firebase whenever there is signal. Expenses are stored there as well as on your
-                phone.
-              </p>
-              <p>
-                <strong>No signal is fine.</strong> The app keeps working and catches up by itself
-                once you are back online.
-              </p>
-              <p>
-                <strong>Anyone with a group&apos;s invite link can see and edit it.</strong> Share it
-                only with the people in the group.
-              </p>
-            </div>
-          </details>
-        </div>
       </div>
     </>
   )
@@ -197,32 +158,13 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
         <span className="name">{trip.name}</span>
         <Icon name="chevron" size={18} className="chev" />
       </div>
-      <div className="mid">
+      {/* Faces and the verdict: who is in it, and where you stand. Nothing else. */}
+      <div className="bottom lean">
         <AvatarStack members={members} />
-        <span className="facts">
-          {countOf(members.length, 'person', 'people')} ·{' '}
-          {countOf(liveExpenses(trip).length, 'expense', 'expenses')}
-          <span className="when">
-            <Icon name="clock" size={12} />
-            {timeAgo(lastActivity(trip), Date.now())}
-          </span>
-        </span>
-      </div>
-      <div className="bottom">
         {verdictNode}
-        <span className="spent num">{formatMoney(totals.totalSpentMinor, trip.currency)} spent</span>
       </div>
     </button>
   )
-}
-
-/** When anything on the trip last changed, on any phone. */
-function lastActivity(trip: Trip): number {
-  let at = trip.updatedAt
-  for (const e of Object.values(trip.expenses)) at = Math.max(at, e.updatedAt)
-  for (const s of Object.values(trip.settlements)) at = Math.max(at, s.updatedAt)
-  for (const m of Object.values(trip.members)) at = Math.max(at, m.updatedAt)
-  return at
 }
 
 /**

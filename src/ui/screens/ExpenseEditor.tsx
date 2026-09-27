@@ -4,7 +4,7 @@ import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { evaluateAmount, formatMinor, formatMoney, parseAmount } from '../../domain/money'
 import { amountInWords } from '../../domain/words'
 import { isIsoDate } from '../../domain/ledger'
-import { Alert, Avatar, Field, Money, NotFound, Segmented, TopBar, firstName } from '../components'
+import { Alert, Avatar, Field, Money, NotFound, Segmented, TopBar, firstName, shortDate } from '../components'
 import { Icon } from '../icons'
 import { back, leave } from '../router'
 import { useToast } from '../toast'
@@ -68,6 +68,13 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
   }, [members, db.identities, tripId])
   const payerRow = useRef<HTMLDivElement>(null)
   const uid = useId()
+  /**
+   * The date-and-note fold starts open only when there is something in it
+   * to see. Read once: React must not re-apply it on every keystroke, or
+   * the fold would snap shut under the person's thumb.
+   */
+  const [extrasOpen] = useState(() => (existing?.date ?? todayISO()) !== todayISO() || (existing?.note ?? '') !== '')
+  const extras = useRef<HTMLDetailsElement>(null)
   const ids = { amount: `${uid}-amount`, description: `${uid}-desc`, date: `${uid}-date`, note: `${uid}-note` }
 
   /** The newest live expense on the trip, for "same as last time". */
@@ -221,6 +228,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
   function jumpToProblem() {
     if (!problem) return
     setTouched(true)
+    // A date problem lives inside the fold; open it so the scroll lands on something.
+    if (problem.at === 'date' && extras.current) extras.current.open = true
     const el = anchors[problem.at].current
     if (!el) return
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -448,10 +457,6 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           )}
         </Field>
 
-        <Field label="Date" error={errorAt('date')} anchor={anchors.date} htmlFor={ids.date}>
-          <input id={ids.date} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </Field>
-
         <Field label="Split" error={errorAt('split')} anchor={anchors.split}>
           <Segmented
             value={mode}
@@ -560,15 +565,36 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
           )}
         </div>
 
-        <Field label="Note (optional)" htmlFor={ids.note}>
-          <textarea
-            id={ids.note}
-            value={note}
-            maxLength={500}
-            placeholder="Anything worth remembering about this one"
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </Field>
+        {/*
+          Date and note fold away: most expenses are today's and need no
+          note. The summary line still says what is set, so nothing is hidden,
+          and the fold opens itself whenever either differs from the default.
+        */}
+        <details ref={extras} className="howto extras" open={extrasOpen}>
+          <summary>
+            <Icon name="clock" size={18} />
+            <span className="grow">
+              {date === todayISO() ? 'Today' : isIsoDate(date) ? shortDate(date) : 'No date'}
+              <span className="dim"> · {note.trim() ? 'note added' : 'no note'}</span>
+            </span>
+            <Icon name="chevron" size={18} className="chev" />
+          </summary>
+          <div className="body">
+            <div className="spacer" />
+            <Field label="Date" error={errorAt('date')} anchor={anchors.date} htmlFor={ids.date}>
+              <input id={ids.date} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </Field>
+            <Field label="Note (optional)" htmlFor={ids.note}>
+              <textarea
+                id={ids.note}
+                value={note}
+                maxLength={500}
+                placeholder="Anything worth remembering about this one"
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </Field>
+          </div>
+        </details>
 
         {/*
           A pointer, not a verdict: the message itself sits under the field it

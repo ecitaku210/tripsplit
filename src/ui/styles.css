@@ -490,6 +490,8 @@ body {
   min-width: 0;
   font-size: 0.9375rem;
   font-weight: 600;
+  /* A long name must wrap, or the card widens the page on a narrow phone. */
+  overflow-wrap: anywhere;
 }
 
 .trip-card .verdict.pos {
@@ -1964,4 +1966,88 @@ details.howto .body > .trip-card {
 /* Settle rows: the "who records this" label needs width, so the meta line wraps instead of clipping. */
 .row .pay-line + .meta {
   white-space: normal;
+}
+
+/* ---------- "Why?" folds: explanations on demand ---------- */
+
+.why {
+  margin-top: 6px;
+}
+.why summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 4px;
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.why summary::-webkit-details-marker {
+  display: none;
+}
+.why[open] summary {
+  color: var(--text);
+}
+.why p {
+  margin: 2px 0 6px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.why p strong {
+  color: var(--text);
+}
+
+/* The compact balance card: a verdict and a link, not a dashboard. */
+.hero.compact {
+  padding: 16px 18px;
+}
+.hero.compact .headline {
+  margin-top: 6px;
+  font-size: 1.75rem;
+}
+.hero.compact .actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Balance rows open on tap to show how the number came about. */
+.balance-row.open .detail {
+  display: block;
+}
+.balance-row .detail {
+  display: none;
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+button.row.balance-row {
+  text-align: left;
+}
+
+/* Top bar with two icon buttons on the right. */
+.topbar .right-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Trip card, lean: name, faces, verdict. */
+.trip-card .bottom.lean {
+  margin-top: 12px;
+  padding-top: 0;
+  border-top: 0;
+  align-items: center;
+}
+
+/* People rows: tap to edit; the tools appear only then. */
+.row.person .tools {
+  display: flex;
+  gap: 4px;
+  flex: none;
 }

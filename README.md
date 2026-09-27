@@ -55,7 +55,7 @@ balance to show you, and "Who paid?" has nothing sensible to pre-fill.
 The interesting part of this app is not the expense form, it is the merge.
 Firebase is only the postman; the merge is the brain.
 
-Every record — expense, person, repayment — carries four fields:
+Every record — expense, person, payment — carries four fields:
 
 | Field | Purpose |
 | --- | --- |
@@ -238,7 +238,7 @@ through, the browser refuses to run or send anything else. The policy lives in
 `vite.config.ts`; a new network call has to be added there first or it fails
 in production.
 
-Deleting anything (an expense, a repayment, a person, a trip) shows an
+Deleting anything (an expense, a payment, a person, a trip) shows an
 **Undo** for a few seconds instead of asking "are you sure?". A delete is a
 tombstone, so undo is just a newer version of the record with the tombstone
 cleared, and it wins the merge on every phone.
