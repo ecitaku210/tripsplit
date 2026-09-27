@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { Currency, Member, Minor } from '../domain/types'
 import { formatMoney } from '../domain/money'
-import { back } from './router'
+import { back, useOverlayEntry } from './router'
 import { Icon, type IconName } from './icons'
 
 /**
@@ -354,8 +354,9 @@ export interface SheetAction {
 
 /**
  * A menu that rises from the bottom, where the thumb already is. It closes
- * on a tap outside, on Escape, on Cancel, and before any action runs, so an
- * action that navigates or shows a toast lands on a clean screen. It is
+ * on the phone's back button, a tap outside, Escape or Cancel, and before
+ * any action runs, so an action that navigates or shows a toast lands on a
+ * clean screen. It is
  * rendered into <body> so no transformed ancestor can misplace it.
  */
 export function ActionSheet({
@@ -368,10 +369,12 @@ export function ActionSheet({
   onClose: () => void
 }) {
   const first = useRef<HTMLButtonElement>(null)
+  // The phone's back button closes the sheet; so does everything else, via the same path.
+  const { dismiss } = useOverlayEntry(onClose)
   useEffect(() => {
     first.current?.focus()
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') dismiss()
     }
     window.addEventListener('keydown', onKey)
     const overflow = document.body.style.overflow
@@ -380,12 +383,14 @@ export function ActionSheet({
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = overflow
     }
-  }, [onClose])
+    // dismiss is stable in behaviour; the effect runs once per open sheet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return createPortal(
     <div
       className="sheet-backdrop"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) dismiss()
       }}
     >
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title}>
@@ -395,16 +400,13 @@ export function ActionSheet({
             key={a.label}
             ref={i === 0 ? first : undefined}
             className={`sheet-item${a.danger ? ' danger' : ''}`}
-            onClick={() => {
-              onClose()
-              a.onSelect()
-            }}
+            onClick={() => dismiss(a.onSelect)}
           >
             <Icon name={a.icon} size={20} />
             {a.label}
           </button>
         ))}
-        <button className="sheet-item sheet-cancel" onClick={onClose}>
+        <button className="sheet-item sheet-cancel" onClick={() => dismiss()}>
           Cancel
         </button>
       </div>

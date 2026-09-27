@@ -450,6 +450,8 @@ export function createSync(opts: SyncOptions) {
   async function close(): Promise<void> {
     closed = true
     if (signInTimer) clearTimeout(signInTimer)
+    // A copy on purpose: unwatch() deletes from the map being walked.
+    // oxlint-disable-next-line unicorn/no-useless-spread
     for (const id of [...channels.keys()]) unwatch(id)
     await deleteApp(app)
   }

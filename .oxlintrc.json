@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "unicorn", "oxc", "vitest"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "error",
+    "react/react-in-jsx-scope": "off",
+
+    // Off on purpose. react/refs misreads ref objects passed as props
+    // (anchor={anchors.x}) as reads of .current during render. The vitest
+    // pair flags `expect(r.ok).toBe(false); if (!r.ok) expect(r.message)`,
+    // which is TypeScript narrowing after an unconditional check, not an
+    // assertion that can be skipped.
+    "react/refs": "off",
+    "vitest/no-conditional-expect": "off",
+    "vitest/require-to-throw-message": "off"
+  },
+  "ignorePatterns": ["dist/**", "dev-dist/**", "node_modules/**", "coverage/**"]
+}

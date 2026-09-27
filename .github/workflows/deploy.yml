@@ -48,6 +48,12 @@ jobs:
 
       - run: npm ci
 
+      - name: Lint
+        # Oxlint parses TypeScript itself, so it keeps working on TypeScript 7,
+        # which typescript-eslint does not support yet. It runs the React
+        # hooks rules the code's disable comments refer to.
+        run: npm run lint
+
       - name: Test
         run: npm test
 
