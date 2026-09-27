@@ -2,10 +2,9 @@ import { useMemo, useRef, useState } from 'react'
 import { useStore, useTrip } from '../../storage/store'
 import { buildLedgerFile, decodeLedger, encodeLedger, parseLedger } from '../../domain/ledger'
 import { liveExpenses } from '../../domain/balance'
-import { Alert, NotFound, TopBar } from '../components'
+import { Alert, NotFound, TopBar, Why } from '../components'
 import { Icon } from '../icons'
 import { tap } from '../haptics'
-import { back } from '../router'
 import type { Id } from '../../domain/types'
 import type { MergeSummary } from '../../domain/merge'
 
@@ -132,7 +131,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
     <>
       <TopBar
         title="Invite & share"
-        subtitle="Bring someone into this group, or receive their copy"
+        subtitle="Send the link once; every phone stays in step"
         onBack
         backTo={`/trip/${tripId}`}
         backLabel={trip.name}
@@ -140,11 +139,10 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
       <div className="content no-fab">
         <div className="section">
           {key ? (
-            <Alert tone="good">
-              <strong>End-to-end encrypted.</strong> Only phones with this group&apos;s code can read
-              it; Firebase stores it as scrambled text. The link carries the key, so share it
-              only with the people in the group.
-            </Alert>
+            <p className="hint" style={{ margin: 0 }}>
+              <Icon name="lock" size={13} /> End-to-end encrypted. The link carries the key, so
+              share it only with the people in the group.
+            </p>
           ) : confirmEncrypt ? (
             <div className="card pad">
               <p className="hint" style={{ margin: '0 0 12px' }}>
@@ -176,8 +174,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
             </div>
           ) : (
             <Alert tone="warn">
-              <strong>Not encrypted yet.</strong> This group was created before encryption existed,
-              so Firebase can read it. New groups are encrypted from the start.
+              <strong>Not encrypted yet.</strong> Firebase can read this group.
               <button className="link stand" onClick={() => setConfirmEncrypt(true)}>
                 Turn on encryption
               </button>
@@ -186,14 +183,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
         </div>
 
         <div className="section">
-          <div className="section-head">
-            <h2>Invite someone</h2>
-          </div>
           <div className="card pad">
-            <p className="hint" style={{ margin: '0 0 12px' }}>
-              Send them this group once. After they open it, every phone stays in step by itself —
-              no more sharing needed.
-            </p>
             <button className="btn primary block" onClick={shareLink}>
               <Icon name="share" size={18} />
               Share this group
@@ -209,23 +199,23 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
                 Save file
               </button>
             </div>
-            <p className="hint">
-              Share opens your phone's own sheet: pick WhatsApp, and whoever taps the link joins.
-              The link carries the whole trip ({Math.ceil(code.length / 1024)} KB), so if a chat
-              app clips it, send the file instead.
-            </p>
+            <Why label="How sharing works">
+              Send the group once; whoever taps the link joins, and from then on every phone stays
+              in step by itself. The link carries the whole group ({Math.ceil(code.length / 1024)}{' '}
+              KB), so if a chat app clips it, send the file instead.
+            </Why>
           </div>
         </div>
 
         <div className="section">
-          <div className="section-head">
-            <h2>Receive a copy</h2>
-          </div>
-          <div className="card pad">
-            <p className="hint" style={{ margin: '0 0 12px' }}>
-              Got a code or file from someone on this group? Merge it in. Nothing you already have is
-              overwritten, and merging the same copy twice changes nothing.
-            </p>
+          <details className="howto">
+            <summary>
+              <Icon name="download" size={18} />
+              <span className="grow">Received a code or file? Merge it in</span>
+              <Icon name="chevron" size={18} className="chev" />
+            </summary>
+            <div className="body">
+            <div className="spacer" />
             <label className="btn block" style={{ cursor: 'pointer' }}>
               <Icon name="file" size={18} />
               Open a .tripsplit.json file
@@ -264,7 +254,12 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
               <Icon name="download" size={18} />
               Merge into my copy
             </button>
-          </div>
+            <Why>
+              Nothing you already have is overwritten, and merging the same copy twice changes
+              nothing.
+            </Why>
+            </div>
+          </details>
         </div>
 
         {result && (
@@ -272,10 +267,6 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
             <Alert tone={result.ok ? 'good' : 'bad'}>{result.message}</Alert>
           </div>
         )}
-
-        <button className="btn block ghost" onClick={() => back(`/trip/${tripId}`)}>
-          Back to group
-        </button>
       </div>
     </>
   )

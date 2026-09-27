@@ -151,8 +151,7 @@ export function RepayScreen({ tripId }: { tripId: Id }) {
             </div>
           </div>
           <p className="hint">
-            Record only once the money has actually moved, and only on one phone. A part payment is
-            fine: the balances shrink by what was paid, and Settle up shows what is left.
+            A part payment is fine: the balances shrink by what was paid.
           </p>
         </div>
       </div>

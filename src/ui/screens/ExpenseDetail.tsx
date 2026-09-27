@@ -135,10 +135,6 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
               </div>
             ))}
           </div>
-          <p className="hint">
-            Shares add up to the amount exactly; any leftover paise go to whoever was rounded down
-            most, the same on every phone.
-          </p>
         </div>
 
         {!closed && (

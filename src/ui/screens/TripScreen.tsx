@@ -10,7 +10,6 @@ import {
   Alert,
   Avatar,
   AvatarPair,
-  AvatarStack,
   Empty,
   Money,
   NotFound,
@@ -99,14 +98,23 @@ export function TripScreen({ tripId }: { tripId: Id }) {
         backTo="/"
         backLabel="Groups"
         right={
-          <button
-            className="btn ghost icon"
-            onClick={() => navigate(`/trip/${tripId}/people`)}
-            aria-label="People in this group"
-          >
-            <Icon name="users" size={18} />
-            People
-          </button>
+          <span className="right-group">
+            <button
+              className="btn ghost icon-only"
+              onClick={() => navigate(`/trip/${tripId}/share`)}
+              aria-label="Invite & share"
+            >
+              <Icon name="share" size={18} />
+            </button>
+            <button
+              className="btn ghost icon"
+              onClick={() => navigate(`/trip/${tripId}/people`)}
+              aria-label="People in this group"
+            >
+              <Icon name="users" size={18} />
+              People
+            </button>
+          </span>
         }
       />
       <div className="content">
@@ -128,25 +136,6 @@ export function TripScreen({ tripId }: { tripId: Id }) {
         </div>
 
         {tab === 'expenses' ? <ExpensesTab trip={trip} me={me} /> : <BalancesTab trip={trip} />}
-
-        <div className="section">
-          <div className="tiles">
-            <button className="tile" onClick={() => navigate(`/trip/${tripId}/share`)}>
-              <span className="ic">
-                <Icon name="share" size={18} />
-              </span>
-              <span className="t-title">Invite &amp; share</span>
-              <span className="t-sub">Bring a friend into this group, or receive their copy.</span>
-            </button>
-            <button className="tile" onClick={() => navigate(`/trip/${tripId}/settle`)}>
-              <span className="ic">
-                <Icon name="handshake" size={18} />
-              </span>
-              <span className="t-title">Settle up</span>
-              <span className="t-sub">The fewest payments that make everyone square.</span>
-            </button>
-          </div>
-        </div>
       </div>
 
       {/*
@@ -183,7 +172,6 @@ function BalanceHero({
   sync: SyncStatus | null
 }) {
   const { db, setMyself, unarchiveTrip } = useStore()
-  const encrypted = !!db.keys[trip.id]
   const totals = useMemo(() => computeTotals(trip), [trip])
   const members = liveMembers(trip)
   const mine = me ? totals.balances.find((b) => b.memberId === me) : undefined
@@ -193,7 +181,7 @@ function BalanceHero({
   const note = sync ? SYNC[sync].note : undefined
 
   return (
-    <div className="hero">
+    <div className="hero compact">
       <div className="head">
         <p className="kicker">Your balance</p>
         {sync && <Pill tone={SYNC[sync].tone}>{SYNC[sync].label}</Pill>}
@@ -238,27 +226,18 @@ function BalanceHero({
         </>
       )}
       {note && <p className="note">{note}</p>}
+      {/*
+        One small link, not a button block: the sentence above already says
+        what to do, and the two big buttons at the thumb do the daily work.
+      */}
       {mine && mine.netMinor !== 0 && members.length > 1 && (
-        <button className="btn hero-cta" onClick={() => navigate(`/trip/${trip.id}/settle`)}>
-          <Icon name="handshake" size={18} />
-          {mine.netMinor < 0 ? 'Settle up' : 'See who pays you'}
-        </button>
-      )}
-      <div className="foot">
-        <div className="left">
-          <AvatarStack members={members} />
-          <span>{countOf(members.length, 'person', 'people')}</span>
-          {encrypted && (
-            <span className="lock" title="End-to-end encrypted">
-              <Icon name="lock" size={13} />
-            </span>
-          )}
+        <div className="actions">
+          <button className="btn icon" onClick={() => navigate(`/trip/${trip.id}/settle`)}>
+            <Icon name="handshake" size={16} />
+            {mine.netMinor < 0 ? 'Settle up' : 'See who pays you'}
+          </button>
         </div>
-        <span className="num right">
-          <strong>{formatMoney(totals.totalSpentMinor, trip.currency)}</strong> spent
-          <span className="dim"> · {countOf(liveExpenses(trip).length, 'expense', 'expenses')}</span>
-        </span>
-      </div>
+      )}
       <PeriodNote trip={trip} />
       {db.archived[trip.id] && (
         <Alert tone="info">
@@ -492,10 +471,6 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
     <>
       {expenses.length > 0 && (
         <div className="section">
-          <div className="section-head">
-            <h2>Expenses</h2>
-            <span className="aside">{countOf(expenses.length, 'entry', 'entries')}</span>
-          </div>
           {/*
             One card per day, headed "Today" / "Yesterday" / "22 Sep", with
             that day's total on the right. A flat list of forty rows reads as
@@ -607,6 +582,11 @@ function BalancesTab({ trip }: { trip: Trip }) {
   const nameOf = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'someone')
   const me = db.identities[trip.id]
   const settled = totals.balances.every((b) => b.netMinor === 0)
+  // The balance card already links to Settle up when the reader owes or is
+  // owed; this list offers it only when the card does not.
+  const mineNet = totals.balances.find((b) => b.memberId === me)?.netMinor ?? 0
+  // Rows opened by a tap, showing how the number came about.
+  const [open, setOpen] = useState<Set<Id>>(() => new Set())
 
   if (totals.balances.length === 0) {
     return (
@@ -622,15 +602,27 @@ function BalancesTab({ trip }: { trip: Trip }) {
 
   return (
     <div className="section">
-      <h2>Who is up, who is down</h2>
       <div className="card">
         {totals.balances.map((b) => {
           const member = trip.members[b.memberId]
           const label = counterpartyLabel(obligationsOf(plan, b.memberId), nameOf)
           const tone = b.netMinor > 0 ? 'pos' : b.netMinor < 0 ? 'neg' : 'zero'
           const width = Math.round((Math.abs(b.netMinor) / scale) * 100)
+          const isOpen = open.has(b.memberId)
           return (
-            <div key={b.memberId} className="row static balance-row">
+            <button
+              key={b.memberId}
+              className={`row balance-row${isOpen ? ' open' : ''}`}
+              aria-expanded={isOpen}
+              onClick={() =>
+                setOpen((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(b.memberId)) next.delete(b.memberId)
+                  else next.add(b.memberId)
+                  return next
+                })
+              }
+            >
               {member ? <Avatar member={member} /> : <UnknownAvatar />}
               <div className="grow">
                 <div className="title">
@@ -638,30 +630,36 @@ function BalancesTab({ trip }: { trip: Trip }) {
                   {b.memberId === me && <span className="chip tiny accent">you</span>}
                   {member?.deletedAt != null && <span className="chip tiny">removed</span>}
                 </div>
-                <div className="meta">
-                  {label} · paid <Money amount={b.paidMinor} currency={trip.currency} />, used{' '}
+                <div className="meta">{label}</div>
+                <div className="detail">
+                  paid <Money amount={b.paidMinor} currency={trip.currency} /> · used{' '}
                   <Money amount={b.owedMinor} currency={trip.currency} />
-                </div>
-                <div className={`bar ${tone}`} aria-hidden="true">
-                  <span style={{ width: `${Math.max(width, b.netMinor === 0 ? 0 : 3)}%` }} />
+                  <div className={`bar ${tone}`} aria-hidden="true">
+                    <span style={{ width: `${Math.max(width, b.netMinor === 0 ? 0 : 3)}%` }} />
+                  </div>
                 </div>
               </div>
               <div className="amount">
                 <Money amount={b.netMinor} currency={trip.currency} signed />
               </div>
-            </div>
+            </button>
           )
         })}
       </div>
+      {plan.length > 0 && mineNet === 0 && (
+        <>
+          <div className="spacer" />
+          <button className="btn block" onClick={() => navigate(`/trip/${trip.id}/settle`)}>
+            <Icon name="handshake" size={18} />
+            Settle up
+          </button>
+        </>
+      )}
       {settled && (
         <div style={{ marginTop: 10 }}>
           <CloseBooks trip={trip} />
         </div>
       )}
-      <p className="hint">
-        These numbers include every expense that has reached this phone. If someone has been
-        offline, their latest expenses arrive when they reconnect.
-      </p>
 
       <SpendByCategory trip={trip} />
     </div>
@@ -691,32 +689,40 @@ function SpendByCategory({ trip }: { trip: Trip }) {
     }
   }, [trip])
 
-  if (rows.total === 0 || rows.items.length < 2) return null
+  if (rows.total === 0) return null
 
+  // Folded: the total is the one number people glance at; the breakdown is
+  // for the curious.
   return (
-    <div className="section" style={{ marginTop: 24 }}>
-      <h2>Where the money went</h2>
-      <div className="spend-bar" aria-hidden="true">
-        {rows.items.map(({ c, minor }) => (
-          <span
-            key={c.id}
-            style={{ width: `${(minor / rows.total) * 100}%`, background: categoryColor(c) }}
-          />
-        ))}
+    <details className="howto" style={{ marginTop: 16 }}>
+      <summary>
+        <Icon name="tag" size={18} />
+        <span className="grow">Where the money went</span>
+        <span className="num">{formatMoney(rows.total, trip.currency)}</span>
+        <Icon name="chevron" size={18} className="chev" />
+      </summary>
+      <div className="body">
+        <div className="spend-bar" aria-hidden="true">
+          {rows.items.map(({ c, minor }) => (
+            <span
+              key={c.id}
+              style={{ width: `${(minor / rows.total) * 100}%`, background: categoryColor(c) }}
+            />
+          ))}
+        </div>
+        <div className="card">
+          {rows.items.map(({ c, minor, pct }) => (
+            <div key={c.id} className="spend-row">
+              <span className="swatch" style={{ background: categoryColor(c) }}>
+                <Icon name={c.icon} size={15} />
+              </span>
+              <span className="label">{c.label}</span>
+              <span className="pct num">{pct}%</span>
+              <Money amount={minor} currency={trip.currency} />
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="card">
-        {rows.items.map(({ c, minor, pct }) => (
-          <div key={c.id} className="spend-row">
-            <span className="swatch" style={{ background: categoryColor(c) }}>
-              <Icon name={c.icon} size={15} />
-            </span>
-            <span className="label">{c.label}</span>
-            <span className="pct num">{pct}%</span>
-            <Money amount={minor} currency={trip.currency} />
-          </div>
-        ))}
-      </div>
-      <p className="hint">Guessed from each expense&apos;s words. Rename an expense to move it.</p>
-    </div>
+    </details>
   )
 }

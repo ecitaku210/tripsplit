@@ -166,9 +166,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                 })}
               </div>
               <p className="hint">
-                Tap <strong>Record</strong> only once the money has actually changed hands, and only
-                on one phone. Only the two people in a payment can record it. It reaches everyone
-                else as soon as this phone has signal.
+                Tap <strong>Record</strong> once the money has changed hands, on one phone only.
               </p>
             </div>
           </>
@@ -181,10 +179,6 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
           </button>
         </div>
 
-        <div className="spacer" />
-        <button className="btn block ghost" onClick={() => back(`/trip/${tripId}`)}>
-          Back to group
-        </button>
       </div>
     </>
   )
