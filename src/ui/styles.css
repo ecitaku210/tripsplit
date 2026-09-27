@@ -958,8 +958,10 @@ button.link {
   /* At large text the words wrap to a second line rather than spill. */
   white-space: normal;
   line-height: 1.15;
-  padding: 6px 10px;
-  font-size: 1rem;
+  padding: 6px 8px;
+  /* Sized so "Paid someone" with its glyph keeps ten pixels to spare at 390px,
+     whatever bold face the phone draws it in. */
+  font-size: 0.9375rem;
 }
 /* The glyph must never be the thing that gives way when the label is wide. */
 .fab-bar .fab svg {
@@ -969,8 +971,8 @@ button.link {
   background: var(--surface-2);
   box-shadow: 0 14px 34px -8px rgba(0, 0, 0, 0.6);
 }
-/* Very narrow phones: the words matter more than the glyphs. */
-@media (max-width: 360px) {
+/* Narrow phones: the words matter more than the glyphs. */
+@media (max-width: 380px) {
   .fab-bar .fab svg {
     display: none;
   }
