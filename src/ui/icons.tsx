@@ -48,6 +48,7 @@ export type IconName =
   | 'key'
   | 'archive'
   | 'flag'
+  | 'more'
 
 const PATHS: Record<IconName, string> = {
   utensils: 'M3 2v7a3 3 0 0 0 6 0V2M6 2v20M18 2c-2 0-3 3-3 7v2h3v11M18 2v9',
@@ -64,6 +65,7 @@ const PATHS: Record<IconName, string> = {
   back: 'M15 5l-7 7 7 7',
   arrow: 'M5 12h14M13 6l6 6-6 6',
   'arrow-up': 'M12 19V5M6 11l6-6 6 6',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
   basket: 'M3 10h18l-1.6 9.1a2 2 0 0 1-2 1.9H6.6a2 2 0 0 1-2-1.9L3 10zM8 10l3-6M16 10l-3-6M9 14v3M12 14v3M15 14v3',
   home: 'M3 11l9-8 9 8M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10',
   bolt: 'M13 2L4 14h7l-1 8 9-12h-7l1-8z',

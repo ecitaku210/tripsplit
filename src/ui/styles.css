@@ -448,7 +448,7 @@ body {
   border-color: var(--line-strong);
 }
 
-.trip-card + .trip-card {
+.trip-card-wrap + .trip-card-wrap {
   margin-top: 12px;
 }
 
@@ -2139,4 +2139,107 @@ button.row.balance-row {
   padding-right: 28px;
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+/* ---------- home cards: press and hold, or the ⋯ in the corner ---------- */
+
+.trip-card-wrap {
+  position: relative;
+}
+.trip-card {
+  /* A hold opens our menu, not the phone's text selection or link callout. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.trip-card .top {
+  padding-right: 40px;
+}
+.trip-more {
+  position: absolute;
+  top: 8px;
+  right: 6px;
+  color: var(--text-dim);
+}
+
+/* ---------- action sheet ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  animation: sheet-fade 0.15s var(--ease);
+}
+.sheet {
+  width: calc(100% - 16px);
+  max-width: 544px;
+  margin-bottom: calc(var(--safe-bottom) + 8px);
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  animation: sheet-up 0.2s var(--ease);
+}
+.sheet-title {
+  padding: 12px 14px 8px;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+.sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.sheet-item svg {
+  flex: none;
+  color: var(--text-dim);
+}
+.sheet-item:active,
+.sheet-item:focus-visible {
+  background: var(--surface-2);
+}
+.sheet-item.danger,
+.sheet-item.danger svg {
+  color: var(--negative);
+}
+.sheet-cancel {
+  justify-content: center;
+  margin-top: 6px;
+  background: var(--surface-2);
+}
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .sheet-backdrop {
+    animation: none;
+  }
 }
