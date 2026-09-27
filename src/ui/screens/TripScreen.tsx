@@ -282,9 +282,9 @@ function Warnings({ trip }: { trip: Trip }) {
       )}
       {doubledRepayments.length > 0 && (
         <Alert tone="warn">
-          <strong>Possible double repayment.</strong> The same repayment was recorded on two
+          <strong>Possible double payment.</strong> The same payment was recorded on two
           phones, so it counts twice. If it was only paid once, delete one of them under{' '}
-          <strong>Repayments</strong>.
+          <strong>Payments</strong>.
         </Alert>
       )}
       {totals.problems.length > 0 && (
@@ -395,7 +395,7 @@ function ClosedPeriods({ trip }: { trip: Trip }) {
                         <Icon name="arrow" size={16} className="arrow" />
                         <span>{shortName(s.toMember)}</span>
                       </div>
-                      <div className="meta">{shortDate(s.date)} · repayment</div>
+                      <div className="meta">{shortDate(s.date)} · payment</div>
                     </div>
                     <div className="amount">
                       <Money amount={s.amountMinor} currency={trip.currency} />
@@ -520,7 +520,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
 
       {settlements.length > 0 && (
         <div className="section">
-          <h2>Repayments</h2>
+          <h2>Payments</h2>
           <div className="card">
             {settlements.map((s) => (
               <div key={s.id} className="row static">
@@ -545,18 +545,18 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                   */}
                   <button
                     className="btn ghost icon-only"
-                    aria-label={`Delete repayment ${nameOf(s.fromMember)} to ${nameOf(s.toMember)}`}
+                    aria-label={`Delete payment ${nameOf(s.fromMember)} to ${nameOf(s.toMember)}`}
                     onClick={() => {
                       // Only the payer or the receiver may take a repayment
                       // back; anyone else is told so and nothing changes.
                       if (!isParty(me, s)) {
                         toast(
-                          `Only ${shortName(s.fromMember)} or ${shortName(s.toMember)} can delete this repayment.`,
+                          `Only ${shortName(s.fromMember)} or ${shortName(s.toMember)} can delete this payment.`,
                         )
                         return
                       }
                       deleteSettlement(trip.id, s.id)
-                      toast(`Deleted repayment ${shortName(s.fromMember)} → ${shortName(s.toMember)}`, {
+                      toast(`Deleted payment ${shortName(s.fromMember)} → ${shortName(s.toMember)}`, {
                         action: { label: 'Undo', onClick: () => restoreSettlement(trip.id, s.id) },
                       })
                     }}

@@ -151,7 +151,7 @@ export function HelpScreen() {
               it, tap <strong>Save</strong>. To remove it, tap <strong>Delete expense</strong> at
               the bottom of the edit screen. Everyone gets the change by itself.
               Deleted by mistake? Tap <strong>Undo</strong> on the message at the bottom within a
-              few seconds. That works for removed people and repayments too.
+              few seconds. That works for removed people and payments too.
             </p>
           </Q>
         </div>
@@ -238,11 +238,11 @@ export function HelpScreen() {
               <strong>Bring back from Archived</strong> undoes it.
             </p>
           </Q>
-          <Q q="A repayment was recorded twice, or by mistake">
+          <Q q="A payment was recorded twice, or by mistake">
             <p>
-              On the group screen, under <strong>Repayments</strong>, tap the <strong>bin icon</strong>{' '}
+              On the group screen, under <strong>Payments</strong>, tap the <strong>bin icon</strong>{' '}
               next to it. It is removed for everyone. The app warns you with{' '}
-              <strong>Possible double repayment</strong> when two phones recorded the same one.
+              <strong>Possible double payment</strong> when two phones recorded the same one.
             </p>
           </Q>
         </div>

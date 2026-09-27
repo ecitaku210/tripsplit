@@ -278,7 +278,7 @@ export function describe(s: MergeSummary): string {
   if (s.membersAdded) bits.push(`${s.membersAdded} new ${s.membersAdded > 1 ? 'people' : 'person'}`)
   if (s.expensesAdded) bits.push(`${s.expensesAdded} new expense${s.expensesAdded > 1 ? 's' : ''}`)
   if (s.expensesChanged) bits.push(`${s.expensesChanged} updated`)
-  if (s.settlementsAdded) bits.push(`${s.settlementsAdded} repayment${s.settlementsAdded > 1 ? 's' : ''}`)
+  if (s.settlementsAdded) bits.push(`${s.settlementsAdded} payment${s.settlementsAdded > 1 ? 's' : ''}`)
   if (bits.length === 0) return 'Nothing new — you already had everything in that copy.'
   return `Merged: ${bits.join(', ')}.`
 }

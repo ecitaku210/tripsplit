@@ -48,7 +48,7 @@ export function RepayScreen({ tripId }: { tripId: Id }) {
   return (
     <>
       <TopBar
-        title="Record a repayment"
+        title="Record a payment"
         subtitle="Money that has already changed hands"
         onBack
         backTo={`/trip/${tripId}`}
