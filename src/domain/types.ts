@@ -176,4 +176,10 @@ export interface Database {
    * main list and not watched live, so it costs nothing while it sleeps.
    */
   archived: Record<Id, number>
+  /**
+   * Trips this phone has sent to someone (share sheet, copied link or saved
+   * file), tripId -> when. Personal, never synced: it only drives the
+   * getting-started card on a fresh group.
+   */
+  shared: Record<Id, number>
 }

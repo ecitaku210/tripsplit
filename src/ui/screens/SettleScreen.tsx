@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
-import { computeTotals } from '../../domain/balance'
+import { computeTotals, liveMembers } from '../../domain/balance'
 import { isParty, settlementPlan } from '../../domain/settle'
 import { Alert, AvatarPair, Empty, Money, NotFound, TopBar, firstName } from '../components'
 import { Icon } from '../icons'
@@ -66,7 +66,19 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
           </div>
         )}
 
-        {plan.length === 0 ? (
+        {liveMembers(trip).length < 2 ? (
+          <>
+            <Empty icon="users" title="Just you so far">
+              Add the others first; then this shows who pays whom.
+            </Empty>
+            <div className="section">
+              <button className="btn block" onClick={() => navigate(`/trip/${tripId}/people`)}>
+                <Icon name="users" size={18} />
+                Add people
+              </button>
+            </div>
+          </>
+        ) : plan.length === 0 ? (
           <>
             <Empty icon="check" title="Nothing to settle">
               Everyone is square. If anyone has been offline, check again once they reconnect so
