@@ -1264,13 +1264,14 @@ input.amount-input {
   flex: none;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 700;
+  background: linear-gradient(145deg, var(--accent), var(--accent-2));
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-glow);
+  font-size: 0.9375rem;
+  font-weight: 800;
 }
 
 .steps .s-title {
@@ -1340,13 +1341,41 @@ details.howto .body strong {
   color: var(--text);
 }
 
+/* Help steps carry the same gold badge as the getting-started card. */
 .faq .body ol {
   margin: 8px 0 0;
-  padding-left: 22px;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.faq .body ol > li {
+  position: relative;
+  padding-left: 40px;
+  min-height: 30px;
+}
+
+.faq .body ol > li::before {
+  counter-increment: step;
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: -1px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--accent), var(--accent-2));
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-glow);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .faq .body li + li {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 /* ---------- expense list, one card per day ---------- */
@@ -2072,18 +2101,19 @@ button.row.balance-row {
   display: grid;
   place-items: center;
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 1.5px solid var(--line-strong);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--text-dim);
+  background: linear-gradient(145deg, var(--accent), var(--accent-2));
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-glow);
+  font-size: 0.9375rem;
+  font-weight: 800;
 }
 .starter .row.done .tick {
-  border-color: transparent;
-  background: var(--positive-soft, rgba(52, 211, 153, 0.18));
-  color: var(--positive);
+  background: var(--positive);
+  color: #06281b;
+  box-shadow: none;
 }
 .starter .row.done .title {
   color: var(--text-dim);
