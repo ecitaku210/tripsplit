@@ -27,7 +27,7 @@ import type { MergeSummary } from '../../domain/merge'
 import { codeFrom, inviteLink } from '../invite'
 export function ShareScreen({ tripId }: { tripId: Id }) {
   const trip = useTrip(tripId)
-  const { db, importTrips, encryptTrip } = useStore()
+  const { db, importTrips, encryptTrip, markShared } = useStore()
   const [copied, setCopied] = useState(false)
   const [pasted, setPasted] = useState('')
   const codeBox = useRef<HTMLTextAreaElement>(null)
@@ -60,6 +60,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
     if (navigator.share) {
       try {
         await navigator.share({ title: `${trip!.name} on TripSplit`, text: inviteText, url: link })
+        markShared(tripId)
         return
       } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return
@@ -72,6 +73,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(link)
+      markShared(tripId)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
       setResult({ ok: true, message: 'Link copied. Paste it into WhatsApp or any chat; whoever taps it joins the group.' })
@@ -86,6 +88,7 @@ export function ShareScreen({ tripId }: { tripId: Id }) {
     a.href = url
     a.download = fileName
     a.click()
+    markShared(tripId)
     // Revoking immediately can cancel the download on some browsers.
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }

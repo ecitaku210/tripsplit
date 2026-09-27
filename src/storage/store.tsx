@@ -96,6 +96,8 @@ interface StoreValue {
   /** Put a trip away on this phone only: hidden from the list, not watched live. */
   archiveTrip(tripId: Id): void
   unarchiveTrip(tripId: Id): void
+  /** This phone sent the group to someone; remembered for the getting-started card. */
+  markShared(tripId: Id): void
 }
 
 export interface ExpenseDraft {
@@ -302,6 +304,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       archiveTrip(tripId) {
         setDb((prev) => ({ ...prev, archived: { ...prev.archived, [tripId]: Date.now() } }))
+      },
+
+      markShared(tripId) {
+        setDb((prev) => (tripId in prev.shared ? prev : { ...prev, shared: { ...prev.shared, [tripId]: Date.now() } }))
       },
 
       unarchiveTrip(tripId) {

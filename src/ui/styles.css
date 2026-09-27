@@ -203,6 +203,9 @@ body {
   font-size: 0.875rem;
   font-weight: 600;
   max-width: 60%;
+  /* The pill gives way first at large text: its word can shorten, the buttons cannot. */
+  flex: 0 1 auto;
+  min-width: 44px;
 }
 
 .backpill .parent {
@@ -943,6 +946,8 @@ button.link {
   z-index: 30;
   display: flex;
   gap: 10px;
+  /* An explicit width: a fixed box otherwise grows to its content at large text. */
+  width: calc(100% - 32px);
   max-width: 528px;
   margin-inline: auto;
 }
@@ -950,8 +955,10 @@ button.link {
   position: static;
   flex: 1 1 0;
   min-width: 0;
-  white-space: nowrap;
-  padding: 0 10px;
+  /* At large text the words wrap to a second line rather than spill. */
+  white-space: normal;
+  line-height: 1.15;
+  padding: 6px 10px;
   font-size: 1rem;
 }
 /* The glyph must never be the thing that gives way when the label is wide. */
@@ -2030,11 +2037,16 @@ button.row.balance-row {
   text-align: left;
 }
 
-/* Top bar with two icon buttons on the right. */
+/* Top bar with two buttons on the right; they never push the bar wider than the phone. */
 .topbar .right-group {
   display: flex;
   align-items: center;
   gap: 2px;
+  flex: none;
+}
+.topbar .right-group .btn {
+  padding-inline: 8px;
+  white-space: nowrap;
 }
 
 /* Trip card, lean: name, faces, verdict. */
@@ -2050,4 +2062,49 @@ button.row.balance-row {
   display: flex;
   gap: 4px;
   flex: none;
+}
+
+/* ---------- getting started: the empty state of a fresh group ---------- */
+
+.starter .row .tick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.starter .row.done .tick {
+  border-color: transparent;
+  background: var(--positive-soft, rgba(52, 211, 153, 0.18));
+  color: var(--positive);
+}
+.starter .row.done .title {
+  color: var(--text-dim);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-strong);
+}
+.starter .row.done .chev {
+  color: var(--positive);
+}
+
+/* Balance rows open on tap: the chevron says so and turns when open. */
+.balance-row .chev {
+  flex: none;
+  color: var(--text-faint);
+  transition: transform 0.2s var(--ease);
+}
+.balance-row.open .chev {
+  transform: rotate(90deg);
+}
+
+/* The chip scroller fades at its right edge: there is more that way. */
+.chips {
+  padding-right: 28px;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 }

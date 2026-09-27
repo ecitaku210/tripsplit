@@ -27,7 +27,7 @@ import { useToast } from '../toast'
 import { dayLabel } from '../dates'
 import { myLineOn } from '../expenseLines'
 import { CATEGORIES, OTHER, categoryColor, categoryOf, type Category } from '../categories'
-import type { Expense, Id, Trip } from '../../domain/types'
+import type { Expense, Id, Member, Trip } from '../../domain/types'
 import { useSyncStatus } from '../../sync/SyncProvider'
 import type { SyncStatus } from '../../sync/engine'
 import { countOf } from '../plural'
@@ -100,11 +100,12 @@ export function TripScreen({ tripId }: { tripId: Id }) {
         right={
           <span className="right-group">
             <button
-              className="btn ghost icon-only"
+              className="btn ghost icon"
               onClick={() => navigate(`/trip/${tripId}/share`)}
               aria-label="Invite & share"
             >
               <Icon name="share" size={18} />
+              Share
             </button>
             <button
               className="btn ghost icon"
@@ -172,6 +173,7 @@ function BalanceHero({
   sync: SyncStatus | null
 }) {
   const { db, setMyself, unarchiveTrip } = useStore()
+  const { show: toast } = useToast()
   const totals = useMemo(() => computeTotals(trip), [trip])
   const members = liveMembers(trip)
   const mine = me ? totals.balances.find((b) => b.memberId === me) : undefined
@@ -213,7 +215,12 @@ function BalanceHero({
             <select
               value=""
               aria-label="Which person is you?"
-              onChange={(e) => e.target.value && setMyself(trip.id, e.target.value)}
+              onChange={(e) => {
+                if (!e.target.value) return
+                setMyself(trip.id, e.target.value)
+                // The one line that closes the loop for someone who just joined.
+                toast('You’re in. Expenses you add reach everyone in the group.')
+              }}
             >
               <option value="">Choose your name…</option>
               {members.map((m) => (
@@ -433,7 +440,7 @@ function ClosedPeriods({ trip }: { trip: Trip }) {
 }
 
 function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
-  const { deleteSettlement, restoreSettlement } = useStore()
+  const { db, deleteSettlement, restoreSettlement } = useStore()
   const members = useMemo(() => liveMembers(trip), [trip])
   const { show: toast } = useToast()
   const expenses = useMemo(() => liveExpenses(trip), [trip])
@@ -449,19 +456,14 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
   if (expenses.length === 0 && settlements.length === 0) {
     return (
       <>
-        <Empty icon="receipt" title={periods.length ? 'Fresh count' : 'No expenses yet'}>
-          {periods.length ? (
-            <>
-              The books were closed on <strong>{shortDate(localIso(periods[0]!.closing.at))}</strong>.
-              Anything added now starts from zero.
-            </>
-          ) : (
-            <>
-              Tap <strong>Add expense</strong> the moment you pay for something — it takes five
-              seconds and saves an argument later.
-            </>
-          )}
-        </Empty>
+        {periods.length ? (
+          <Empty icon="receipt" title="Fresh count">
+            The books were closed on <strong>{shortDate(localIso(periods[0]!.closing.at))}</strong>.
+            Anything added now starts from zero.
+          </Empty>
+        ) : (
+          <GettingStarted trip={trip} members={members} shared={trip.id in db.shared} />
+        )}
         <ClosedPeriods trip={trip} />
       </>
     )
@@ -588,11 +590,19 @@ function BalancesTab({ trip }: { trip: Trip }) {
   // Rows opened by a tap, showing how the number came about.
   const [open, setOpen] = useState<Set<Id>>(() => new Set())
 
-  if (totals.balances.length === 0) {
+  if (totals.balances.length === 0 || liveMembers(trip).length < 2) {
     return (
-      <Empty icon="users" title="Nobody in this group yet">
-        Add people first, then log an expense.
-      </Empty>
+      <>
+        <Empty icon="users" title="Just you so far">
+          Add the others, and this shows who owes whom.
+        </Empty>
+        <div className="section">
+          <button className="btn block" onClick={() => navigate(`/trip/${trip.id}/people`)}>
+            <Icon name="users" size={18} />
+            Add people
+          </button>
+        </div>
+      </>
     )
   }
 
@@ -642,6 +652,7 @@ function BalancesTab({ trip }: { trip: Trip }) {
               <div className="amount">
                 <Money amount={b.netMinor} currency={trip.currency} signed />
               </div>
+              <Icon name="chevron" size={16} className="chev" />
             </button>
           )
         })}
@@ -724,5 +735,38 @@ function SpendByCategory({ trip }: { trip: Trip }) {
         </div>
       </div>
     </details>
+  )
+}
+
+/**
+ * A fresh group's first screen: the three things that make it work, each a
+ * button, each ticked as it happens. It is the empty state, so it costs a
+ * running group nothing and vanishes for good with the first expense.
+ */
+function GettingStarted({ trip, members, shared }: { trip: Trip; members: Member[]; shared: boolean }) {
+  const peopleDone = members.length > 1
+  const steps: { label: string; sub: string; done: boolean; to: string; icon: 'users' | 'share' | 'plus' }[] = [
+    { label: 'Add the people', sub: peopleDone ? countOf(members.length, 'person', 'people') : 'Everyone who shares costs', done: peopleDone, to: `/trip/${trip.id}/people`, icon: 'users' },
+    { label: 'Share the link', sub: shared ? 'Sent' : 'They tap it once and stay in step', done: shared, to: `/trip/${trip.id}/share`, icon: 'share' },
+    { label: 'Log the first expense', sub: 'Five seconds at the till', done: false, to: `/trip/${trip.id}/expense/new`, icon: 'plus' },
+  ]
+  return (
+    <div className="section">
+      <h2>Getting started</h2>
+      <div className="card starter">
+        {steps.map((s, i) => (
+          <button key={s.label} className={`row${s.done ? ' done' : ''}`} onClick={() => navigate(s.to)}>
+            <span className="tick" aria-hidden="true">
+              {s.done ? <Icon name="check" size={16} /> : i + 1}
+            </span>
+            <div className="grow">
+              <div className="title">{s.label}</div>
+              <div className="meta">{s.sub}</div>
+            </div>
+            <Icon name={s.done ? 'check' : 'chevron'} size={18} className="chev" />
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }

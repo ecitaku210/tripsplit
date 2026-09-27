@@ -5,6 +5,7 @@ import { Alert, TopBar } from '../components'
 import { Icon } from '../icons'
 import { tap } from '../haptics'
 import { navigate, replace } from '../router'
+import { useToast } from '../toast'
 import { describe } from './ShareScreen'
 import { codeFrom } from '../invite'
 
@@ -27,11 +28,12 @@ function insideAnotherApp(): boolean {
 
 export function ImportScreen({ payload }: { payload: string | null }) {
   const { importTrips } = useStore()
+  const { show: toast } = useToast()
   const [pasted, setPasted] = useState('')
   const codeBox = useRef<HTMLTextAreaElement>(null)
-  const [result, setResult] = useState<{ ok: boolean; message: string; tripId?: string } | null>(
-    null,
-  )
+  const [result, setResult] = useState<
+    { ok: boolean; message: string; tripId?: string; land?: { name: string } } | null
+  >(null)
   const consumed = useRef(false)
   // Remembered past the URL rewrite below, which drops the payload.
   const arrivedByLink = useRef(payload !== null).current
@@ -42,11 +44,22 @@ export function ImportScreen({ payload }: { payload: string | null }) {
     // Drop the payload from the URL straight away: it can be tens of KB, and
     // leaving it in history means a back-navigation re-imports it.
     replace('/import')
-    apply(payload)
+    apply(payload, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payload])
 
-  function apply(text: string) {
+  /*
+   * The landing is its own effect, after the import has committed: a route
+   * change made in the same pass as the URL rewrite above is lost to it.
+   */
+  useEffect(() => {
+    if (!result?.ok || !result.land || !result.tripId) return
+    replace(`/trip/${result.tripId}`)
+    toast(`You’re in ${result.land.name}. Pick your name at the top.`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result])
+
+  function apply(text: string, fromLink = false) {
     const decoded = decodeLedger(codeFrom(text))
     if (!decoded.ok) {
       setResult({ ok: false, message: decoded.message })
@@ -57,10 +70,17 @@ export function ImportScreen({ payload }: { payload: string | null }) {
       ...(decoded.file.keys ? { keys: decoded.file.keys } : {}),
     })
     const first = Object.keys(decoded.file.trips)[0]
+    /*
+     * Someone who tapped a friend's link did not ask to import anything: they
+     * expect to arrive in the group. So they do, unless this is a chat app's
+     * built-in browser, where the warning below matters more than the arrival.
+     */
+    const land = fromLink && first && Object.keys(decoded.file.trips).length === 1 && !insideAnotherApp()
     setResult({
       ok: true,
       message: describe(summary) + (decoded.warnings.length ? ` ${decoded.warnings.join(' ')}` : ''),
       ...(first ? { tripId: first } : {}),
+      ...(land ? { land: { name: decoded.file.trips[first]?.name ?? 'the group' } } : {}),
     })
     setPasted('')
   }
