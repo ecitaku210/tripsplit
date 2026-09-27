@@ -2,7 +2,7 @@ import { useId, useRef, useState } from 'react'
 import { useStore } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { DEFAULT_CURRENCIES, formatMoney } from '../../domain/money'
-import { Alert, AvatarStack, Empty, Field, TopBar, firstName, verdict } from '../components'
+import { ActionSheet, Alert, AvatarStack, Empty, Field, TopBar, firstName, verdict, type SheetAction } from '../components'
 import { settlementPlan } from '../../domain/settle'
 import { cardVerdict, obligationsOf } from '../../domain/standing'
 import { Icon } from '../icons'
@@ -10,6 +10,8 @@ import { navigate } from '../router'
 import type { Currency, Trip } from '../../domain/types'
 import { countOf } from '../plural'
 import { tap } from '../haptics'
+import { useLongPress } from '../longPress'
+import { useToast } from '../toast'
 
 export function HomeScreen() {
   const { db, createTrip, usage, saveError } = useStore()
@@ -123,9 +125,18 @@ export function HomeScreen() {
  * only number the reader actually wants — where they stand — in words.
  */
 function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
+  const { db, archiveTrip, unarchiveTrip, deleteTrip, restoreTrip } = useStore()
+  const { show: toast } = useToast()
+  const [menu, setMenu] = useState(false)
+  const press = useLongPress(() => {
+    tap()
+    setMenu(true)
+  })
   const members = liveMembers(trip)
   const totals = computeTotals(trip)
   const mine = me ? totals.balances.find((b) => b.memberId === me) : undefined
+  const archived = trip.id in db.archived
+  const someoneOwes = settlementPlan(totals.balances).length > 0
 
   let verdictNode
   if (!mine) {
@@ -152,18 +163,78 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
     )
   }
 
+  /*
+   * The things people reach for without wanting to open the group first.
+   * Delete and Archive carry Undo, like everywhere else in the app.
+   */
+  const actions: SheetAction[] = [
+    { label: 'Add expense', icon: 'plus', onSelect: () => navigate(`/trip/${trip.id}/expense/new`) },
+    ...(someoneOwes
+      ? [{ label: 'Settle up', icon: 'handshake' as const, onSelect: () => navigate(`/trip/${trip.id}/settle`) }]
+      : []),
+    { label: 'Share', icon: 'share', onSelect: () => navigate(`/trip/${trip.id}/share`) },
+    archived
+      ? {
+          label: 'Bring back from Archived',
+          icon: 'refresh',
+          onSelect: () => {
+            unarchiveTrip(trip.id)
+            toast(`${trip.name} is back on your list`)
+          },
+        }
+      : {
+          label: 'Archive',
+          icon: 'archive',
+          onSelect: () => {
+            archiveTrip(trip.id)
+            toast(`Archived ${trip.name}`, { action: { label: 'Undo', onClick: () => unarchiveTrip(trip.id) } })
+          },
+        },
+    {
+      label: 'Delete from this phone',
+      icon: 'trash',
+      danger: true,
+      onSelect: () => {
+        deleteTrip(trip.id)
+        toast(`Deleted ${trip.name} from this phone`, { action: { label: 'Undo', onClick: () => restoreTrip(trip.id) } })
+      },
+    },
+  ]
+
   return (
-    <button className="trip-card" onClick={() => navigate(`/trip/${trip.id}`)}>
-      <div className="top">
-        <span className="name">{trip.name}</span>
-        <Icon name="chevron" size={18} className="chev" />
-      </div>
-      {/* Faces and the verdict: who is in it, and where you stand. Nothing else. */}
-      <div className="bottom lean">
-        <AvatarStack members={members} />
-        {verdictNode}
-      </div>
-    </button>
+    <div className="trip-card-wrap">
+      <button
+        className="trip-card"
+        {...press.handlers}
+        onClick={() => {
+          if (press.swallowClick()) return
+          navigate(`/trip/${trip.id}`)
+        }}
+      >
+        <div className="top">
+          <span className="name">{trip.name}</span>
+        </div>
+        {/* Faces and the verdict: who is in it, and where you stand. Nothing else. */}
+        <div className="bottom lean">
+          <AvatarStack members={members} />
+          {verdictNode}
+        </div>
+      </button>
+      {/*
+        The same menu for anyone who does not know to hold: a thumb, a
+        keyboard, a screen reader. It takes the chevron's place, so the card
+        gains nothing to read.
+      */}
+      <button
+        className="btn ghost icon-only trip-more"
+        aria-label={`More for ${trip.name}`}
+        aria-haspopup="dialog"
+        onClick={() => setMenu(true)}
+      >
+        <Icon name="more" size={22} strokeWidth={3.25} />
+      </button>
+      {menu && <ActionSheet title={trip.name} actions={actions} onClose={() => setMenu(false)} />}
+    </div>
   )
 }
 

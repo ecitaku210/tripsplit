@@ -237,6 +237,10 @@ export function HelpScreen() {
               stops checking for updates. This is on your phone only; nobody else is affected, and{' '}
               <strong>Bring back from Archived</strong> undoes it.
             </p>
+            <p>
+              Quicker: on the home screen, <strong>press and hold</strong> a group (or tap its{' '}
+              <strong>⋯</strong>) for Add expense, Settle up, Share, Archive and Delete.
+            </p>
           </Q>
           <Q q="A payment was recorded twice, or by mistake">
             <p>

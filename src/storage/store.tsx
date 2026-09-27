@@ -285,7 +285,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const at = Math.max(Date.now(), periodStart(trip) + 1)
         editTrip(tripId, (t) => ({
           ...t,
-          closings: { ...(t.closings ?? {}), [id]: { id, at, note, createdAt: at, ...stamp() } },
+          closings: { ...t.closings, [id]: { id, at, note, createdAt: at, ...stamp() } },
         }))
         return id
       },

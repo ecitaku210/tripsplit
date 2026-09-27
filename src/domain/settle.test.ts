@@ -43,7 +43,8 @@ describe('settlementPlan', () => {
       const balances = computeTotals(randomTrip(seed, 8, 60)).balances
       const involved = balances.filter((b) => b.netMinor !== 0).length
       const plan = settlementPlan(balances.map((b) => ({ ...b })))
-      if (involved > 0) expect(plan.length).toBeLessThanOrEqual(involved - 1)
+      // Unconditional, and stricter: a square group must produce no transfers at all.
+      expect(plan.length).toBeLessThanOrEqual(Math.max(0, involved - 1))
     }
   })
 

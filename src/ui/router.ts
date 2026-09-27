@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /**
  * A hash router in 40 lines instead of a dependency.
@@ -145,4 +145,76 @@ export function leave(to: string, steps: number): void {
  */
 export function reset(to: string): void {
   leave(to, Number.POSITIVE_INFINITY)
+}
+
+/**
+ * An overlay (the action sheet) owns one history entry, so the phone's back
+ * button closes it instead of leaving the screen underneath.
+ *
+ * Opening pushes an entry with the same URL, so no route changes. Every way
+ * of closing (back, Cancel, a tap outside, Escape, an action) goes through
+ * that entry being popped; an action runs only after the pop, so anything it
+ * navigates to is pushed from the real screen, at the right depth, and back
+ * from there returns to it.
+ *
+ * React's StrictMode mounts, unmounts and remounts once in development. The
+ * generation counter lets the remount adopt the entry the first mount pushed
+ * rather than pushing a second one or popping the first.
+ */
+let overlayGeneration = 0
+
+function onOverlayEntry(): boolean {
+  return (window.history.state as { overlay?: boolean } | null)?.overlay === true
+}
+
+// A reload while a sheet was open leaves its entry behind with no sheet on it.
+if (typeof window !== 'undefined' && onOverlayEntry()) window.history.back()
+
+export function useOverlayEntry(onPopped: () => void): { dismiss: (then?: () => void) => void } {
+  const live = useRef(false)
+  const pending = useRef<(() => void) | null>(null)
+  const latest = useRef(onPopped)
+  useEffect(() => {
+    latest.current = onPopped
+  })
+
+  useEffect(() => {
+    overlayGeneration += 1
+    if (!onOverlayEntry()) {
+      window.history.pushState({ depth: depth() + 1, overlay: true }, '', window.location.href)
+    }
+    live.current = true
+    const onPop = () => {
+      if (!live.current) return
+      live.current = false
+      const then = pending.current
+      pending.current = null
+      latest.current()
+      then?.()
+    }
+    window.addEventListener('popstate', onPop)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      if (!live.current) return
+      // Unmounted without being dismissed: take the entry back with it,
+      // unless a remount (StrictMode, or the next sheet) has adopted it.
+      live.current = false
+      const generation = overlayGeneration
+      window.setTimeout(() => {
+        if (generation === overlayGeneration && onOverlayEntry()) window.history.back()
+      }, 0)
+    }
+  }, [])
+
+  return {
+    dismiss: (then) => {
+      if (!live.current) {
+        latest.current()
+        then?.()
+        return
+      }
+      pending.current = then ?? null
+      window.history.back()
+    },
+  }
 }

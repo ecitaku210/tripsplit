@@ -1,7 +1,8 @@
-import type { ReactNode, RefObject } from 'react'
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import type { Currency, Member, Minor } from '../domain/types'
 import { formatMoney } from '../domain/money'
-import { back } from './router'
+import { back, useOverlayEntry } from './router'
 import { Icon, type IconName } from './icons'
 
 /**
@@ -341,5 +342,75 @@ export function Why({ label = 'Why?', children }: { label?: string; children: Re
       </summary>
       <p>{children}</p>
     </details>
+  )
+}
+
+export interface SheetAction {
+  label: string
+  icon: IconName
+  onSelect: () => void
+  danger?: boolean
+}
+
+/**
+ * A menu that rises from the bottom, where the thumb already is. It closes
+ * on the phone's back button, a tap outside, Escape or Cancel, and before
+ * any action runs, so an action that navigates or shows a toast lands on a
+ * clean screen. It is
+ * rendered into <body> so no transformed ancestor can misplace it.
+ */
+export function ActionSheet({
+  title,
+  actions,
+  onClose,
+}: {
+  title: string
+  actions: SheetAction[]
+  onClose: () => void
+}) {
+  const first = useRef<HTMLButtonElement>(null)
+  // The phone's back button closes the sheet; so does everything else, via the same path.
+  const { dismiss } = useOverlayEntry(onClose)
+  useEffect(() => {
+    first.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismiss()
+    }
+    window.addEventListener('keydown', onKey)
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = overflow
+    }
+    // dismiss is stable in behaviour; the effect runs once per open sheet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return createPortal(
+    <div
+      className="sheet-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) dismiss()
+      }}
+    >
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="sheet-title">{title}</div>
+        {actions.map((a, i) => (
+          <button
+            key={a.label}
+            ref={i === 0 ? first : undefined}
+            className={`sheet-item${a.danger ? ' danger' : ''}`}
+            onClick={() => dismiss(a.onSelect)}
+          >
+            <Icon name={a.icon} size={20} />
+            {a.label}
+          </button>
+        ))}
+        <button className="sheet-item sheet-cancel" onClick={() => dismiss()}>
+          Cancel
+        </button>
+      </div>
+    </div>,
+    document.body,
   )
 }
