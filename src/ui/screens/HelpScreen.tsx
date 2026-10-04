@@ -164,8 +164,9 @@ export function HelpScreen() {
               change. <strong>Offline</strong>: no signal; everything is saved on your phone and
               goes up when signal returns. <strong>Sync problem</strong>: the app keeps retrying by
               itself. <strong>Update needed</strong>: close the app fully and open it again.{' '}
-              <strong>Locked</strong>: the group is encrypted and this phone lacks the key; ask
-              someone in the group for the code again and import it. <strong>Daily limit</strong>:
+              <strong>Locked</strong>: this phone does not have the group&apos;s code, so it is not
+              getting updates and its own changes do not go out. Ask anyone in the group to tap{' '}
+              <strong>Share</strong> and send you the link, then open it on this phone. <strong>Daily limit</strong>:
               the free sync allowance for the day is used up; everything is saved on the phone and
               syncs again after the daily reset.
             </p>

@@ -63,7 +63,7 @@ const SYNC: Record<
   locked: {
     label: 'Locked',
     tone: 'bad',
-    note: 'This group is encrypted with a key this phone does not have. Ask someone in the group to share it again, then import that code.',
+    note: 'This phone does not have the group’s code, so it is not getting updates. Ask anyone in the group for the link.',
   },
   quota: {
     label: 'Daily limit',
@@ -119,6 +119,7 @@ export function TripScreen({ tripId }: { tripId: Id }) {
         }
       />
       <div className="content">
+        <CutOff trip={trip} sync={sync} />
         <div className="section">
           <BalanceHero trip={trip} me={me} sync={sync} />
         </div>
@@ -180,7 +181,8 @@ function BalanceHero({
   // The same plan Settle up shows, so the names here and there always agree.
   const plan = useMemo(() => settlementPlan(totals.balances), [totals])
   const nameOf = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'someone')
-  const note = sync ? SYNC[sync].note : undefined
+  // When the phone is cut off, the card above says it in full; no echo here.
+  const note = sync && !isCutOff(sync) ? SYNC[sync].note : undefined
 
   return (
     <div className="hero compact">
@@ -254,6 +256,107 @@ function BalanceHero({
           </button>
         </Alert>
       )}
+    </div>
+  )
+}
+
+/** States in which this phone neither receives nor sends: the group has moved on without it. */
+export function isCutOff(sync: SyncStatus | null): sync is 'locked' | 'outdated' {
+  return sync === 'locked' || sync === 'outdated'
+}
+
+/**
+ * When this phone is cut off from the group, say so in words, say what it
+ * costs, and give the one-tap way out. A small pill in the balance card was
+ * too easy to miss, and the balances under it still looked current.
+ *
+ * Locked: the group is encrypted with a code this phone lacks (typically
+ * because encryption was turned on after it joined). Opening a fresh invite
+ * link carries the code, unlocks the group and catches up.
+ * Outdated: someone saved the group with a newer app; reloading picks up the
+ * new version, which the service worker installs on load.
+ */
+function CutOff({ trip, sync }: { trip: Trip; sync: SyncStatus | null }) {
+  const { show: toast } = useToast()
+  if (!isCutOff(sync)) return null
+
+  if (sync === 'outdated') {
+    return (
+      <div className="section">
+        <div className="cutoff" role="alert">
+          <div className="cutoff-head">
+            <Icon name="refresh" size={20} />
+            <strong>This phone needs the new version</strong>
+          </div>
+          <p>
+            Someone saved this group with a newer TripSplit. Until this phone updates, their
+            expenses do not reach you and yours do not reach them.
+          </p>
+          <button className="btn primary block" onClick={() => window.location.reload()}>
+            <Icon name="refresh" size={18} />
+            Update now
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const ask = `Hi! TripSplit shows "Locked" for ${trip.name} on my phone. Can you open the group, tap Share and send me the link?`
+  async function askForLink() {
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: ask })
+        return
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(ask)
+      toast('Message copied. Paste it to anyone in the group.')
+    } catch {
+      toast('Ask anyone in the group to open it, tap Share and send you the link.')
+    }
+  }
+
+  return (
+    <div className="section">
+      <div className="cutoff" role="alert">
+        <div className="cutoff-head">
+          <Icon name="lock" size={20} />
+          <strong>This phone is not getting updates</strong>
+        </div>
+        <p>
+          The group is locked with a code this phone does not have. Expenses others add do not
+          reach you, and yours do not reach them, so the numbers below may be out of date.
+        </p>
+        <ol className="steps">
+          <li>
+            <span className="n">1</span>
+            <div>
+              <div className="s-title">Ask anyone in the group for the link</div>
+              <div className="s-body">They open the group and tap Share.</div>
+            </div>
+          </li>
+          <li>
+            <span className="n">2</span>
+            <div>
+              <div className="s-title">Open the link on this phone</div>
+              <div className="s-body">The group unlocks and catches up by itself.</div>
+            </div>
+          </li>
+        </ol>
+        <div className="btn-row">
+          <button className="btn primary" onClick={() => void askForLink()}>
+            <Icon name="share" size={18} />
+            Ask for the link
+          </button>
+          <button className="btn" onClick={() => navigate('/import')}>
+            <Icon name="download" size={18} />
+            I have the link
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
