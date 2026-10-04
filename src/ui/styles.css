@@ -2243,3 +2243,51 @@ button.row.balance-row {
     animation: none;
   }
 }
+
+/* A notice inside the balance card keeps its distance from the button above it. */
+.hero > .alert {
+  margin-top: 12px;
+}
+
+/* ---------- cut off: locked or outdated ---------- */
+
+.cutoff {
+  padding: 16px;
+  border: 1px solid rgba(251, 113, 133, 0.45);
+  border-radius: var(--radius-lg);
+  background: var(--negative-soft);
+}
+.cutoff-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--negative);
+  font-size: 1.0625rem;
+}
+.cutoff-head strong {
+  color: var(--text);
+}
+.cutoff > p {
+  margin: 8px 0 6px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.cutoff .steps li + li {
+  border-top-color: rgba(251, 113, 133, 0.25);
+}
+.cutoff .btn-row,
+.cutoff > .btn {
+  margin-top: 10px;
+}
+
+/* A home card whose balance may be stale says so in red, under the number. */
+.trip-card .card-flag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--negative);
+}

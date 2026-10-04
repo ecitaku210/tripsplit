@@ -12,6 +12,8 @@ import { countOf } from '../plural'
 import { tap } from '../haptics'
 import { useLongPress } from '../longPress'
 import { useToast } from '../toast'
+import { useSyncStatus } from '../../sync/SyncProvider'
+import { isCutOff } from './TripScreen'
 
 export function HomeScreen() {
   const { db, createTrip, usage, saveError } = useStore()
@@ -136,6 +138,7 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
   const totals = computeTotals(trip)
   const mine = me ? totals.balances.find((b) => b.memberId === me) : undefined
   const archived = trip.id in db.archived
+  const sync = useSyncStatus(trip.id)
   const someoneOwes = settlementPlan(totals.balances).length > 0
 
   let verdictNode
@@ -219,6 +222,16 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
           <AvatarStack members={members} />
           {verdictNode}
         </div>
+        {/*
+          The balance above can be stale when this phone is cut off; say so
+          on the card itself, where the number is read.
+        */}
+        {isCutOff(sync) && (
+          <div className="card-flag">
+            <Icon name={sync === 'locked' ? 'lock' : 'refresh'} size={14} />
+            {sync === 'locked' ? 'Not getting updates · tap to fix' : 'Needs the new version · tap to update'}
+          </div>
+        )}
       </button>
       {/*
         The same menu for anyone who does not know to hold: a thumb, a
