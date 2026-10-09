@@ -2,9 +2,23 @@ import { useId, useRef, useState } from 'react'
 import { useStore } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { DEFAULT_CURRENCIES, formatMoney } from '../../domain/money'
-import { ActionSheet, Alert, AvatarStack, Empty, Field, TopBar, firstName, verdict, type SheetAction } from '../components'
+import {
+  ActionSheet,
+  Alert,
+  Avatar,
+  AvatarStack,
+  Empty,
+  Field,
+  Money,
+  TopBar,
+  UnknownAvatar,
+  firstName,
+  verdict,
+  type SheetAction,
+} from '../components'
 import { settlementPlan } from '../../domain/settle'
-import { cardVerdict, obligationsOf } from '../../domain/standing'
+import { cardVerdict, listNames, obligationsOf } from '../../domain/standing'
+import { overview, type OverviewLine } from '../../domain/overview'
 import { Icon } from '../icons'
 import { navigate } from '../router'
 import type { Currency, Trip } from '../../domain/types'
@@ -259,42 +273,106 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
 /**
  * Where the reader stands across every trip they have named themselves on,
  * one currency at a time. The single most useful number on the home screen
- * for someone on two or three trips at once.
+ * for someone on two or three trips at once. Tapped, it opens into who pays
+ * them and whom they pay, group by group, each line a way into that group's
+ * Settle up, where the payment is recorded.
  */
+/*
+ * Open or closed survives a trip to Settle up and back, which remounts this
+ * screen; a fresh launch starts closed.
+ */
+let standingOpen = false
+
 function Standing({ trips, identities }: { trips: Trip[]; identities: Record<string, string> }) {
-  const byCurrency = new Map<string, { currency: Currency; net: number; trips: number }>()
-  for (const trip of trips) {
-    const me = identities[trip.id]
-    if (!me) continue
-    const mine = computeTotals(trip).balances.find((b) => b.memberId === me)
-    if (!mine) continue
-    const entry = byCurrency.get(trip.currency.code) ?? { currency: trip.currency, net: 0, trips: 0 }
-    entry.net += mine.netMinor
-    entry.trips += 1
-    byCurrency.set(trip.currency.code, entry)
-  }
-  const rows = [...byCurrency.values()].filter((r) => r.trips > 1)
+  const [open, setOpen] = useState(standingOpen)
+  const panelId = useId()
+  const ov = overview(trips, identities)
+  const rows = ov.currencies.filter((r) => r.groups > 1)
   if (rows.length === 0) return null
+  const tripOf = new Map(trips.map((t) => [t.id, t]))
+  const line = (l: OverviewLine, currency: Currency, tone: 'pos' | 'neg') => {
+    const trip = tripOf.get(l.tripId)!
+    const member = trip.members[l.memberId]
+    return (
+      <button
+        key={`${l.tripId}:${l.memberId}`}
+        className="row"
+        onClick={() => navigate(`/trip/${l.tripId}/settle`)}
+      >
+        {member ? <Avatar member={member} group={trip.members} small /> : <UnknownAvatar small />}
+        <div className="grow">
+          <div className="title one-line">{member ? firstName(member.name) : 'Someone (removed)'}</div>
+          <div className="meta">{l.tripName}</div>
+        </div>
+        <div className="amount">
+          <Money amount={l.amountMinor} currency={currency} tone={tone} />
+        </div>
+        <Icon name="chevron" size={16} className="chev" />
+      </button>
+    )
+  }
   return (
     <div className="section">
-      <div className="standing">
-        {rows.map((r) => {
-          const v = verdict(r.net)
-          return (
-            <div key={r.currency.code} className="standing-row">
-              <span className="kicker">Across {countOf(r.trips, 'group', 'groups')}</span>
-              <span className={`verdict ${v.tone}`}>
-                {v.label}
-                {r.net !== 0 && (
+      <div className={`standing${open ? ' open' : ''}`}>
+        <button
+          className="standing-head"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => {
+            standingOpen = !open
+            setOpen(standingOpen)
+          }}
+        >
+          <span className="standing-rows">
+            {rows.map((r) => {
+              const v = verdict(r.netMinor)
+              return (
+                <span key={r.currency.code} className="standing-row">
+                  <span className="kicker">Across {countOf(r.groups, 'group', 'groups')}</span>
+                  <span className={`verdict ${v.tone}`}>
+                    {v.label}
+                    {r.netMinor !== 0 && (
+                      <>
+                        {' '}
+                        <span className="num">{formatMoney(Math.abs(r.netMinor), r.currency)}</span>
+                      </>
+                    )}
+                  </span>
+                </span>
+              )
+            })}
+          </span>
+          <Icon name="chevron" size={16} className="chev" />
+        </button>
+        {open && (
+          <div id={panelId} className="overview">
+            {rows.map((r) => (
+              <div key={r.currency.code}>
+                {r.receive.length > 0 && (
                   <>
-                    {' '}
-                    <span className="num">{formatMoney(Math.abs(r.net), r.currency)}</span>
+                    <div className="overview-label">Owe you</div>
+                    {r.receive.map((l) => line(l, r.currency, 'pos'))}
                   </>
                 )}
-              </span>
-            </div>
-          )
-        })}
+                {r.pay.length > 0 && (
+                  <>
+                    <div className="overview-label">You owe</div>
+                    {r.pay.map((l) => line(l, r.currency, 'neg'))}
+                  </>
+                )}
+                {r.settled.length > 0 && (
+                  <p className="overview-note">All settled in {listNames(r.settled.map((t) => t.tripName))}.</p>
+                )}
+              </div>
+            ))}
+            {ov.unnamed.length > 0 && (
+              <p className="overview-note">
+                Not counted: {listNames(ov.unnamed.map((t) => t.tripName))}. Open it and pick which one is you.
+              </p>
+            )}
+            <p className="overview-note">Tap someone to settle up in that group.</p>
+          </div>
+        )}
       </div>
     </div>
   )

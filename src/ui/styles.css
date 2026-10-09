@@ -1477,10 +1477,67 @@ details.howto .body strong {
 /* ---------- home: standing across trips ---------- */
 
 .standing {
-  padding: 12px 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
+  overflow: hidden;
+}
+
+/* The headline is the switch: the whole strip opens the overview. */
+.standing-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 12px 12px 16px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.standing-rows {
+  flex: 1;
+  min-width: 0;
+}
+/* Same cue as a balance row: points on when closed, turns down when open. */
+.standing-head .chev {
+  flex: none;
+  color: var(--text-faint);
+  transition: transform 0.2s var(--ease);
+}
+.standing.open .standing-head .chev {
+  transform: rotate(90deg);
+}
+
+.overview {
+  border-top: 1px solid var(--line);
+}
+.overview-label {
+  padding: 12px 16px 4px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.overview .row {
+  padding: 10px 16px;
+}
+/* The group name says where to settle: it wraps rather than being cut. */
+.overview .row .meta {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.overview-note {
+  margin: 0;
+  padding: 10px 16px 12px;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+.overview-note + .overview-note {
+  padding-top: 0;
 }
 
 .standing-row {
