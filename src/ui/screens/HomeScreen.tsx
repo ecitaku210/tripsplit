@@ -161,7 +161,12 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
             <span className="num">{formatMoney(Math.abs(mine.netMinor), trip.currency)}</span>
           </>
         )}
-        {v.after && ` ${v.after}`}
+        {v.after && (
+          <>
+            {' '}
+            <span className="after">{v.after}</span>
+          </>
+        )}
       </span>
     )
   }
@@ -219,7 +224,7 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
         </div>
         {/* Faces and the verdict: who is in it, and where you stand. Nothing else. */}
         <div className="bottom lean">
-          <AvatarStack members={members} />
+          <AvatarStack members={members} group={trip.members} />
           {verdictNode}
         </div>
         {/*

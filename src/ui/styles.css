@@ -167,7 +167,7 @@ body {
   padding: calc(var(--safe-top) + 12px) 16px 12px;
   gap: 12px;
   border-bottom-color: transparent;
-  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(0, 0, 0, 0)), rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(0, 0, 0, 0)), rgba(0, 0, 0, 0.9);
 }
 
 .topbar.home h1 {
@@ -498,6 +498,16 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* "by 2 people" wraps as one piece, and reads quieter than the amount. */
+.trip-card .verdict .after,
+.trip-card .verdict .num {
+  white-space: nowrap;
+}
+.trip-card .verdict .after {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
 .trip-card .verdict.pos {
   color: var(--positive);
 }
@@ -766,7 +776,7 @@ button.link {
 }
 
 .avatars .avatar + .avatar {
-  margin-left: -6px;
+  margin-left: -4px;
 }
 
 .avatars .more {
@@ -774,7 +784,7 @@ button.link {
   place-items: center;
   width: 30px;
   height: 30px;
-  margin-left: -6px;
+  margin-left: -4px;
   border-radius: 50%;
   border: 2px solid var(--surface);
   background: var(--surface-3);
@@ -2304,17 +2314,23 @@ button.row.balance-row {
  * Glass over pure black is a grey box, so a faint ambient light sits
  * behind the whole app for the glass to catch.
  *
+ * The tints are dense on purpose. Some phones accept backdrop-filter and then
+ * draw it without the blur, and on those a light tint left the rows behind
+ * readable through the top bar and the buttons. At these densities that
+ * fallback is still clean, and where the blur does render it softens what
+ * little shows through.
+ *
  * Only a handful of elements blur at once, which mid-range Android phones
  * scroll smoothly. A phone that cannot blur, or that asks for reduced
  * transparency, gets solid surfaces back from the same tokens.
  * ==================================================================== */
 
 :root {
-  --glass: rgba(22, 30, 48, 0.55);
-  --glass-strong: rgba(22, 30, 48, 0.66);
+  --glass: rgba(22, 30, 48, 0.94);
+  --glass-strong: rgba(22, 30, 48, 0.92);
   /* Content panes: tinted, no blur (only a soft gradient sits behind them). */
   --pane: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 45%), rgba(17, 27, 47, 0.72);
-  --glass-bar: rgba(4, 8, 16, 0.58);
+  --glass-bar: rgba(4, 8, 16, 0.9);
   --glass-edge: rgba(255, 255, 255, 0.14);
   --glass-blur: blur(24px) saturate(170%);
   /* The bright rim along the top edge: what makes a surface read as glass. */
@@ -2367,6 +2383,21 @@ body::before {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 50%), rgba(21, 30, 48, 0.72);
   border-color: var(--glass-edge);
   box-shadow: var(--sheen);
+}
+
+/* The list dissolves into the screen edge under the floating buttons, instead
+ * of rows being sliced into fragments between and around them. Taps pass
+ * through; the list's bottom padding still lets the last row scroll clear. */
+.fab-bar::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -16px;
+  right: -16px;
+  bottom: calc(-1 * (var(--safe-bottom) + 18px));
+  height: calc(100% + var(--safe-bottom) + 18px + 36px);
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 50%, rgba(0, 0, 0, 0));
 }
 
 /* Paid someone floats over the list: real glass. */

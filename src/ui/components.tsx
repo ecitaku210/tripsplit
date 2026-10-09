@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import type { Currency, Member, Minor } from '../domain/types'
+import type { Currency, Id, Member, Minor } from '../domain/types'
+import { memberColor } from './avatarColors'
 import { formatMoney } from '../domain/money'
 import { back, useOverlayEntry } from './router'
 import { Icon, type IconName } from './icons'
@@ -75,20 +76,6 @@ export function TopBar({
   )
 }
 
-/**
- * Colour is derived from the member id rather than stored, so the same person
- * gets the same colour on every phone in the group without that colour having
- * to be replicated and merged.
- */
-export function avatarColor(id: string): string {
-  let hash = 0
-  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
-  // Hues 70..330: greens, blues, violets, magentas. The 60° band around
-  // gold is the brand, the band around red is "you owe"; a person must not
-  // wear either.
-  return `hsl(${70 + (hash % 260)} 62% 66%)`
-}
-
 /** "Chirag Tandon" -> "Chirag". Dense rows have no room for surnames. */
 export function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name
@@ -101,11 +88,12 @@ export function initials(name: string): string {
   return (words[0]![0]! + words[words.length - 1]![0]!).toUpperCase()
 }
 
-export function Avatar({ member, small }: { member: Member; small?: boolean }) {
+/** `group` is the trip's members: colours are picked to differ within it. */
+export function Avatar({ member, group, small }: { member: Member; group: Record<Id, Member>; small?: boolean }) {
   return (
     <div
       className={`avatar${small ? ' sm' : ''}`}
-      style={{ background: avatarColor(member.id) }}
+      style={{ background: memberColor(group, member.id) }}
       aria-hidden="true"
     >
       {initials(member.name)}
@@ -126,23 +114,39 @@ export function UnknownAvatar({ small }: { small?: boolean }) {
  * Two avatars, payer over payee, for a repayment: "Asha → Chirag" as a
  * picture, so a list of repayments reads without parsing names.
  */
-export function AvatarPair({ from, to }: { from: Member | undefined; to: Member | undefined }) {
+export function AvatarPair({
+  from,
+  to,
+  group,
+}: {
+  from: Member | undefined
+  to: Member | undefined
+  group: Record<Id, Member>
+}) {
   return (
     <div className="avatar-pair" aria-hidden="true">
-      {from ? <Avatar member={from} small /> : <UnknownAvatar small />}
-      {to ? <Avatar member={to} small /> : <UnknownAvatar small />}
+      {from ? <Avatar member={from} group={group} small /> : <UnknownAvatar small />}
+      {to ? <Avatar member={to} group={group} small /> : <UnknownAvatar small />}
     </div>
   )
 }
 
 /** Overlapping small avatars: "who is on this group" at a glance. */
-export function AvatarStack({ members, max = 4 }: { members: Member[]; max?: number }) {
+export function AvatarStack({
+  members,
+  group,
+  max = 4,
+}: {
+  members: Member[]
+  group: Record<Id, Member>
+  max?: number
+}) {
   const shown = members.slice(0, max)
   const rest = members.length - shown.length
   return (
     <div className="avatars" aria-hidden="true">
       {shown.map((m) => (
-        <Avatar key={m.id} member={m} small />
+        <Avatar key={m.id} member={m} group={group} small />
       ))}
       {rest > 0 && <span className="more">+{rest}</span>}
     </div>
@@ -153,13 +157,16 @@ export function Money({
   amount,
   currency,
   signed,
+  tone: forced,
 }: {
   amount: Minor
   currency: Currency
   /** Colours the value green/red. Off for neutral totals like "group spend". */
   signed?: boolean
+  /** Colours an unsigned amount when the words around it carry the direction ("owes ₹40"). */
+  tone?: 'pos' | 'neg'
 }) {
-  const tone = !signed ? '' : amount > 0 ? ' pos' : amount < 0 ? ' neg' : ' zero'
+  const tone = forced ? ` ${forced}` : !signed ? '' : amount > 0 ? ' pos' : amount < 0 ? ' neg' : ' zero'
   return <span className={`money num${tone}`}>{formatMoney(amount, currency)}</span>
 }
 

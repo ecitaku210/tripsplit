@@ -119,7 +119,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
                   const key = `${t.fromMember}>${t.toMember}`
                   return (
                   <div key={key} className="row static wrap">
-                    <AvatarPair from={trip.members[t.fromMember]} to={trip.members[t.toMember]} />
+                    <AvatarPair group={trip.members} from={trip.members[t.fromMember]} to={trip.members[t.toMember]} />
                     <div className="grow">
                       <div className="title pay-line">
                         <span>{shortName(t.fromMember)}</span>
