@@ -153,7 +153,6 @@ body {
   padding: calc(var(--safe-top) + 8px) 12px 8px;
   background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
 
@@ -167,7 +166,7 @@ body {
   padding: calc(var(--safe-top) + 12px) 16px 12px;
   gap: 12px;
   border-bottom-color: transparent;
-  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(0, 0, 0, 0)), rgba(0, 0, 0, 0.9);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(0, 0, 0, 0)), rgba(0, 0, 0, 0.72);
 }
 
 .topbar.home h1 {
@@ -2314,11 +2313,10 @@ button.row.balance-row {
  * Glass over pure black is a grey box, so a faint ambient light sits
  * behind the whole app for the glass to catch.
  *
- * The tints are dense on purpose. Some phones accept backdrop-filter and then
- * draw it without the blur, and on those a light tint left the rows behind
- * readable through the top bar and the buttons. At these densities that
- * fallback is still clean, and where the blur does render it softens what
- * little shows through.
+ * Write `backdrop-filter` alone, never with a hand-written -webkit- twin:
+ * the minifier keeps only the last spelling of the pair, and shipping only
+ * -webkit- left Chrome with no blur at all. The build adds the Safari prefix
+ * itself, and scripts/check-built-css.mjs fails the build if it did not.
  *
  * Only a handful of elements blur at once, which mid-range Android phones
  * scroll smoothly. A phone that cannot blur, or that asks for reduced
@@ -2326,11 +2324,11 @@ button.row.balance-row {
  * ==================================================================== */
 
 :root {
-  --glass: rgba(22, 30, 48, 0.94);
-  --glass-strong: rgba(22, 30, 48, 0.92);
+  --glass: rgba(22, 30, 48, 0.7);
+  --glass-strong: rgba(22, 30, 48, 0.8);
   /* Content panes: tinted, no blur (only a soft gradient sits behind them). */
   --pane: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 45%), rgba(17, 27, 47, 0.72);
-  --glass-bar: rgba(4, 8, 16, 0.9);
+  --glass-bar: rgba(4, 8, 16, 0.72);
   --glass-edge: rgba(255, 255, 255, 0.14);
   --glass-blur: blur(24px) saturate(170%);
   /* The bright rim along the top edge: what makes a surface read as glass. */
@@ -2355,7 +2353,6 @@ body::before {
 .topbar.sub {
   background: var(--glass-bar);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -2405,7 +2402,6 @@ body::before {
   background: var(--glass);
   border-color: var(--glass-edge);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--sheen), 0 14px 34px -8px rgba(0, 0, 0, 0.6);
 }
 
@@ -2431,7 +2427,6 @@ body::before {
   background: var(--glass-strong);
   border-color: var(--glass-edge);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--sheen), var(--shadow);
 }
 .sheet-backdrop {
@@ -2445,7 +2440,6 @@ body::before {
   background: var(--glass-strong);
   border-color: var(--glass-edge);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--sheen), 0 14px 34px -8px rgba(0, 0, 0, 0.75);
 }
 
