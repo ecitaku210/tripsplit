@@ -62,7 +62,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
               const isEditing = editing === m.id
               return isEditing ? (
                 <div key={m.id} className="row static person">
-                  <Avatar member={m} />
+                  <Avatar member={m} group={trip.members} />
                   <div className="grow">
                     <input
                       autoFocus
@@ -113,7 +113,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
                     setEditName(m.name)
                   }}
                 >
-                  <Avatar member={m} />
+                  <Avatar member={m} group={trip.members} />
                   <div className="grow">
                     <div className="title">
                       {m.name}
@@ -121,7 +121,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
                     </div>
                     <div className="meta">
                       {net > 0 ? 'is owed ' : net < 0 ? 'owes ' : 'all square'}
-                      {net !== 0 && <Money amount={Math.abs(net)} currency={trip.currency} />}
+                      {net !== 0 && <Money amount={Math.abs(net)} currency={trip.currency} tone={net > 0 ? 'pos' : 'neg'} />}
                     </div>
                   </div>
                   <Icon name="edit" size={16} className="chev" />

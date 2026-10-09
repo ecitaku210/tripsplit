@@ -84,7 +84,7 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
             <p className="kicker">{splitModeLabel(expense.splitMode, expense.parts.length)}</p>
             <p className="headline num zero">{formatMoney(expense.amountMinor, trip.currency)}</p>
             <div className="paid-by">
-              {payer ? <Avatar member={payer} small /> : <UnknownAvatar small />}
+              {payer ? <Avatar member={payer} group={trip.members} small /> : <UnknownAvatar small />}
               <span>
                 <strong>{payer ? firstName(payer.name) : 'Someone (removed)'}</strong> paid
                 {expense.paidBy === me ? ' (you)' : ''}
@@ -117,7 +117,7 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
           <div className="card">
             {rows.map(({ p, member, share, weight }) => (
               <div key={p.memberId} className="row static">
-                {member ? <Avatar member={member} /> : <UnknownAvatar />}
+                {member ? <Avatar member={member} group={trip.members} /> : <UnknownAvatar />}
                 <div className="grow">
                   <div className="title">
                     {member?.name ?? 'Someone (removed)'}

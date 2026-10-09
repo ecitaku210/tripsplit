@@ -484,7 +484,11 @@ function ClosedPeriods({ trip }: { trip: Trip }) {
                     className="row"
                     onClick={() => navigate(`/trip/${trip.id}/expense/${e.id}`)}
                   >
-                    {trip.members[e.paidBy] ? <Avatar member={trip.members[e.paidBy]!} small /> : <UnknownAvatar small />}
+                    {trip.members[e.paidBy] ? (
+                      <Avatar member={trip.members[e.paidBy]!} group={trip.members} small />
+                    ) : (
+                      <UnknownAvatar small />
+                    )}
                     <div className="grow">
                       <div className="title">{e.description || 'Expense'}</div>
                       <div className="meta">
@@ -498,7 +502,7 @@ function ClosedPeriods({ trip }: { trip: Trip }) {
                 ))}
                 {p.settlements.map((s) => (
                   <div key={s.id} className="row static">
-                    <AvatarPair from={trip.members[s.fromMember]} to={trip.members[s.toMember]} />
+                    <AvatarPair group={trip.members} from={trip.members[s.fromMember]} to={trip.members[s.toMember]} />
                     <div className="grow">
                       <div className="title pay-line">
                         <span>{shortName(s.fromMember)}</span>
@@ -597,7 +601,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                       className="row"
                       onClick={() => navigate(`/trip/${trip.id}/expense/${e.id}`)}
                     >
-                      {payer ? <Avatar member={payer} /> : <UnknownAvatar />}
+                      {payer ? <Avatar member={payer} group={trip.members} /> : <UnknownAvatar />}
                       <div className="grow">
                         <div className="title">
                           {e.description || 'Expense'}
@@ -629,7 +633,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
           <div className="card">
             {settlements.map((s) => (
               <div key={s.id} className="row static">
-                <AvatarPair from={trip.members[s.fromMember]} to={trip.members[s.toMember]} />
+                <AvatarPair group={trip.members} from={trip.members[s.fromMember]} to={trip.members[s.toMember]} />
                 <div className="grow">
                   <div className="title pay-line">
                     <span>{shortName(s.fromMember)}</span>
@@ -736,7 +740,7 @@ function BalancesTab({ trip }: { trip: Trip }) {
                 })
               }
             >
-              {member ? <Avatar member={member} /> : <UnknownAvatar />}
+              {member ? <Avatar member={member} group={trip.members} /> : <UnknownAvatar />}
               <div className="grow">
                 <div className="title">
                   {member?.name ?? 'Someone (removed)'}

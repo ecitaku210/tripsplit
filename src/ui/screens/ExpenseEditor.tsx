@@ -417,7 +417,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                     setTouched(true)
                   }}
                 >
-                  <Avatar member={m} />
+                  <Avatar member={m} group={trip.members} />
                   <span className="pname">{firstName(m.name)}</span>
                   {m.id === db.identities[tripId] && <span className="chip tiny accent me">you</span>}
                 </button>
@@ -492,7 +492,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                       })
                     }}
                   />
-                  <Avatar member={m} small />
+                  <Avatar member={m} group={trip.members} small />
                   <span className="name">
                     {m.name}
                     {m.deletedAt !== null && <> <span className="chip tiny">removed</span></>}
