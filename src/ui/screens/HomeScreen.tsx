@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useStore } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { DEFAULT_CURRENCIES, formatMoney } from '../../domain/money'
@@ -270,6 +270,15 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
   )
 }
 
+/*
+ * Set when a line in the overview opens a group's Settle up, so coming back
+ * finds the overview still open. Home reads it once and clears it: reopening
+ * the app, or arriving from anywhere else, shows the overview closed. Android
+ * keeps an installed app alive for hours, so remembering "open" for the whole
+ * session left it open long after anyone wanted it.
+ */
+let reopenStanding = false
+
 /**
  * Where the reader stands across every trip they have named themselves on,
  * one currency at a time. The single most useful number on the home screen
@@ -277,14 +286,12 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
  * them and whom they pay, group by group, each line a way into that group's
  * Settle up, where the payment is recorded.
  */
-/*
- * Open or closed survives a trip to Settle up and back, which remounts this
- * screen; a fresh launch starts closed.
- */
-let standingOpen = false
-
 function Standing({ trips, identities }: { trips: Trip[]; identities: Record<string, string> }) {
-  const [open, setOpen] = useState(standingOpen)
+  const [open, setOpen] = useState(reopenStanding)
+  // Used once: any later visit to Home starts closed.
+  useEffect(() => {
+    reopenStanding = false
+  }, [])
   const panelId = useId()
   const ov = overview(trips, identities)
   const rows = ov.currencies.filter((r) => r.groups > 1)
@@ -297,7 +304,10 @@ function Standing({ trips, identities }: { trips: Trip[]; identities: Record<str
       <button
         key={`${l.tripId}:${l.memberId}`}
         className="row"
-        onClick={() => navigate(`/trip/${l.tripId}/settle`)}
+        onClick={() => {
+          reopenStanding = true
+          navigate(`/trip/${l.tripId}/settle`)
+        }}
       >
         {member ? <Avatar member={member} group={trip.members} small /> : <UnknownAvatar small />}
         <div className="grow">
@@ -318,10 +328,7 @@ function Standing({ trips, identities }: { trips: Trip[]; identities: Record<str
           className="standing-head"
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => {
-            standingOpen = !open
-            setOpen(standingOpen)
-          }}
+          onClick={() => setOpen((o) => !o)}
         >
           <span className="standing-rows">
             {rows.map((r) => {
