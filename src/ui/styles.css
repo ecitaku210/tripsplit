@@ -2394,7 +2394,15 @@ body::before {
   bottom: calc(-1 * (var(--safe-bottom) + 18px));
   height: calc(100% + var(--safe-bottom) + 18px + 36px);
   pointer-events: none;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 50%, rgba(0, 0, 0, 0));
+  /* Solid from the screen edge to the buttons' lower edge, nearly solid up to
+     their top edge (36px below this box's top, whatever the text size), so no
+     row shows below them or through the gap between them; then a fade. */
+  background: linear-gradient(
+    to top,
+    #000 calc(var(--safe-bottom) + 18px),
+    rgba(0, 0, 0, 0.94) calc(100% - 36px),
+    rgba(0, 0, 0, 0)
+  );
 }
 
 /* Paid someone floats over the list: real glass. */
