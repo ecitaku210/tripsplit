@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/check-built-css.mjs",
     "preview": "vite preview --host",
     "test": "vitest run",
     "lint": "oxlint -c .oxlintrc.json --deny-warnings src",
