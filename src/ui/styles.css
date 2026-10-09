@@ -119,12 +119,13 @@ body {
 
 .app {
   position: relative;
+  z-index: 1;
   min-height: 100%;
   display: flex;
   flex-direction: column;
   max-width: 560px;
   margin: 0 auto;
-  background: var(--bg);
+  background: transparent;
 }
 
 /*
@@ -2290,4 +2291,175 @@ button.row.balance-row {
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--negative);
+}
+
+/* ======================================================================
+ * Liquid glass, on the floating layer only.
+ *
+ * Real (blurred) glass goes only on things that float over content: the
+ * top bar, the bottom buttons, the action sheet and toasts. Content cards
+ * are tinted panes with the same lit rim but no blur: behind them is only
+ * the soft ambient light, so a blur there would cost every scroll frame
+ * and look the same. Form fields stay solid so typing stays legible.
+ * Glass over pure black is a grey box, so a faint ambient light sits
+ * behind the whole app for the glass to catch.
+ *
+ * Only a handful of elements blur at once, which mid-range Android phones
+ * scroll smoothly. A phone that cannot blur, or that asks for reduced
+ * transparency, gets solid surfaces back from the same tokens.
+ * ==================================================================== */
+
+:root {
+  --glass: rgba(22, 30, 48, 0.55);
+  --glass-strong: rgba(22, 30, 48, 0.66);
+  /* Content panes: tinted, no blur (only a soft gradient sits behind them). */
+  --pane: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 45%), rgba(17, 27, 47, 0.72);
+  --glass-bar: rgba(4, 8, 16, 0.58);
+  --glass-edge: rgba(255, 255, 255, 0.14);
+  --glass-blur: blur(24px) saturate(170%);
+  /* The bright rim along the top edge: what makes a surface read as glass. */
+  --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Ambient light behind everything: gold from the top, a cool blue from below. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(65% 40% at 90% -5%, rgba(var(--accent-rgb), 0.17), transparent 70%),
+    radial-gradient(80% 50% at -10% 85%, rgba(59, 108, 199, 0.3), transparent 70%),
+    radial-gradient(60% 40% at 110% 45%, rgba(124, 92, 255, 0.18), transparent 70%);
+}
+
+/* Top bar: frosted, with a hairline of light along its lower edge. */
+.topbar,
+.topbar.sub {
+  background: var(--glass-bar);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.backpill {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--glass-edge);
+  box-shadow: var(--sheen);
+}
+
+/* Primary buttons: liquid gold, with a specular highlight across the top half. */
+.btn.primary {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(145deg, var(--accent), var(--accent-2));
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), var(--shadow-glow);
+}
+.fab.primary {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 14px 34px -8px rgba(0, 0, 0, 0.6),
+    var(--shadow-glow);
+}
+
+/* Ordinary buttons: a clear pane with a lit rim. */
+.btn:not(.primary):not(.ghost):not(.danger):not(.link) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 50%), rgba(21, 30, 48, 0.72);
+  border-color: var(--glass-edge);
+  box-shadow: var(--sheen);
+}
+
+/* Paid someone floats over the list: real glass. */
+.fab-bar .fab.secondary {
+  background: var(--glass);
+  border-color: var(--glass-edge);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--sheen), 0 14px 34px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* Expenses / Balances: a glass track with a lighter liquid thumb. */
+.segmented {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--glass-edge);
+  box-shadow: var(--sheen);
+}
+.segmented button[aria-pressed='true'] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02)), rgba(34, 48, 74, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.pill {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--glass-edge);
+  box-shadow: var(--sheen);
+}
+
+/* The sheet and toasts float over everything: strong glass, readable text. */
+.sheet {
+  background: var(--glass-strong);
+  border-color: var(--glass-edge);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--sheen), var(--shadow);
+}
+.sheet-backdrop {
+  background: rgba(0, 0, 0, 0.38);
+}
+.sheet-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--sheen);
+}
+.toast {
+  background: var(--glass-strong);
+  border-color: var(--glass-edge);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--sheen), 0 14px 34px -8px rgba(0, 0, 0, 0.75);
+}
+
+/* Content panes: tinted glass with a lit rim. No blur here: behind a card there is
+ * only the soft ambient light, so a blur would cost every scroll frame and change nothing. */
+.card,
+.trip-card,
+.standing,
+details.howto {
+  background: var(--pane);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--sheen), var(--shadow);
+}
+.hero {
+  background: linear-gradient(160deg, rgba(30, 48, 84, 0.72) 0%, rgba(13, 21, 38, 0.66) 60%, rgba(10, 17, 32, 0.66) 100%);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: var(--sheen), var(--shadow);
+}
+
+/* No blur available, or the phone asks for less transparency: solid surfaces. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass: var(--surface-2);
+    --glass-strong: var(--surface-3);
+    --glass-bar: rgba(0, 0, 0, 0.94);
+  }
+  .topbar.home {
+    background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(0, 0, 0, 0)), rgba(0, 0, 0, 0.94);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass: var(--surface-2);
+    --glass-strong: var(--surface-3);
+    --glass-bar: #000;
+    --glass-blur: none;
+    --pane: var(--surface);
+  }
+  body::before {
+    display: none;
+  }
+  .hero {
+    background: linear-gradient(160deg, #132038 0%, #0d1526 60%, #0a1120 100%);
+  }
+  .topbar.home {
+    background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(0, 0, 0, 0)), #000;
+  }
 }
