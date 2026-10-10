@@ -283,10 +283,8 @@ body {
 .section-head > h2,
 .kicker {
   margin: 0 0 10px;
-  font-size: 0.75rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--text-faint);
 }
 
@@ -771,7 +769,7 @@ button.link {
 .avatars .avatar {
   width: 30px;
   height: 30px;
-  border: 2px solid var(--surface);
+  border: 2px solid var(--bg);
 }
 
 .avatars .avatar + .avatar {
@@ -785,7 +783,7 @@ button.link {
   height: 30px;
   margin-left: -4px;
   border-radius: 50%;
-  border: 2px solid var(--surface);
+  border: 2px solid var(--bg);
   background: var(--surface-3);
   font-size: 11px;
   font-weight: 650;
@@ -1399,7 +1397,7 @@ details.howto .body strong {
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin: 0 4px 8px;
+  margin: 0 0 8px;
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-dim);
@@ -1516,10 +1514,8 @@ details.howto .body strong {
 }
 .overview-label {
   padding: 12px 16px 4px;
-  font-size: 0.75rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--text-faint);
 }
 .overview .row {
@@ -1619,7 +1615,7 @@ details.howto .body strong {
 
 .avatar-pair .avatar {
   position: absolute;
-  border: 2px solid var(--surface);
+  border: 2px solid var(--bg);
 }
 
 .avatar-pair .avatar:first-child {
@@ -2360,49 +2356,32 @@ button.row.balance-row {
 }
 
 /* ======================================================================
- * Liquid glass, on the floating layer only.
+ * Surfaces: flat lists, one pane of glass.
  *
- * Real (blurred) glass goes only on things that float over content: the
- * top bar, the bottom buttons, the action sheet and toasts. Content cards
- * are tinted panes with the same lit rim but no blur: behind them is only
- * the soft ambient light, so a blur there would cost every scroll frame
- * and look the same. Form fields stay solid so typing stays legible.
- * Glass over pure black is a grey box, so a faint ambient light sits
- * behind the whole app for the glass to catch.
+ * Lists (groups, expenses, balances, people, the overview) are rows on the
+ * page split by hairlines, with no box: boxes were the loudest thing on
+ * screen and said nothing the spacing does not. Panels that group a form or
+ * a notice keep a box. Real (blurred) glass is kept for the top bar alone,
+ * where content scrolls beneath it; the bottom bar, the sheet and toasts are
+ * solid. Form fields stay solid so typing stays legible.
  *
  * Write `backdrop-filter` alone, never with a hand-written -webkit- twin:
  * the minifier keeps only the last spelling of the pair, and shipping only
  * -webkit- left Chrome with no blur at all. The build adds the Safari prefix
  * itself, and scripts/check-built-css.mjs fails the build if it did not.
  *
- * Only a handful of elements blur at once, which mid-range Android phones
- * scroll smoothly. A phone that cannot blur, or that asks for reduced
- * transparency, gets solid surfaces back from the same tokens.
+ * Only the top bar blurs, which any phone scrolls smoothly. A phone that
+ * cannot blur, or that asks for reduced transparency, gets it solid.
  * ==================================================================== */
 
 :root {
-  --glass: rgba(22, 30, 48, 0.7);
-  --glass-strong: rgba(22, 30, 48, 0.8);
-  /* Content panes: tinted, no blur (only a soft gradient sits behind them). */
+  /* Boxed panels (the balance card, forms, notices): a tint with a lit rim. */
   --pane: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 45%), rgba(17, 27, 47, 0.72);
   --glass-bar: rgba(4, 8, 16, 0.72);
   --glass-edge: rgba(255, 255, 255, 0.14);
   --glass-blur: blur(24px) saturate(170%);
   /* The bright rim along the top edge: what makes a surface read as glass. */
   --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
-}
-
-/* Ambient light behind everything: gold from the top, a cool blue from below. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(65% 40% at 90% -5%, rgba(var(--accent-rgb), 0.17), transparent 70%),
-    radial-gradient(80% 50% at -10% 85%, rgba(59, 108, 199, 0.3), transparent 70%),
-    radial-gradient(60% 40% at 110% 45%, rgba(124, 92, 255, 0.18), transparent 70%);
 }
 
 /* Top bar: frosted, with a hairline of light along its lower edge. */
@@ -2439,8 +2418,8 @@ body::before {
   box-shadow: var(--sheen);
 }
 
-/* The list dissolves into the screen edge under the floating buttons, instead
- * of rows being sliced into fragments between and around them. Taps pass
+/* The bottom buttons sit on a solid bar with a hairline along its top: the list
+ * scrolls under it and nothing shows between or below the buttons. Taps pass
  * through; the list's bottom padding still lets the last row scroll clear. */
 .fab-bar::before {
   content: '';
@@ -2449,25 +2428,17 @@ body::before {
   left: -16px;
   right: -16px;
   bottom: calc(-1 * (var(--safe-bottom) + 18px));
-  height: calc(100% + var(--safe-bottom) + 18px + 36px);
+  height: calc(100% + var(--safe-bottom) + 18px + 12px);
   pointer-events: none;
-  /* Solid from the screen edge to the buttons' lower edge, nearly solid up to
-     their top edge (36px below this box's top, whatever the text size), so no
-     row shows below them or through the gap between them; then a fade. */
-  background: linear-gradient(
-    to top,
-    #000 calc(var(--safe-bottom) + 18px),
-    rgba(0, 0, 0, 0.94) calc(100% - 36px),
-    rgba(0, 0, 0, 0)
-  );
+  background: var(--bg);
+  border-top: 1px solid var(--line);
 }
 
-/* Paid someone floats over the list: real glass. */
+/* Paid someone sits on the solid bottom bar: a plain outline, not glass. */
 .fab-bar .fab.secondary {
-  background: var(--glass);
-  border-color: var(--glass-edge);
-  backdrop-filter: var(--glass-blur);
-  box-shadow: var(--sheen), 0 14px 34px -8px rgba(0, 0, 0, 0.6);
+  background: var(--bg);
+  border-color: var(--line-strong);
+  box-shadow: none;
 }
 
 /* Expenses / Balances: a glass track with a lighter liquid thumb. */
@@ -2487,11 +2458,10 @@ body::before {
   box-shadow: var(--sheen);
 }
 
-/* The sheet and toasts float over everything: strong glass, readable text. */
+/* The sheet and toasts float over everything: solid, so text is never in doubt. */
 .sheet {
-  background: var(--glass-strong);
+  background: var(--surface-2);
   border-color: var(--glass-edge);
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--sheen), var(--shadow);
 }
 .sheet-backdrop {
@@ -2502,21 +2472,74 @@ body::before {
   box-shadow: var(--sheen);
 }
 .toast {
-  background: var(--glass-strong);
+  background: var(--surface-3);
   border-color: var(--glass-edge);
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--sheen), 0 14px 34px -8px rgba(0, 0, 0, 0.75);
 }
 
-/* Content panes: tinted glass with a lit rim. No blur here: behind a card there is
- * only the soft ambient light, so a blur would cost every scroll frame and change nothing. */
+/* Boxed panels: a tint with a lit rim. */
 .card,
-.trip-card,
-.standing,
 details.howto {
   background: var(--pane);
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: var(--sheen), var(--shadow);
+}
+
+/* Lists: no box. Rows sit on the page and hairlines split them. */
+.card.list,
+.standing {
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+.card.list {
+  overflow: visible;
+}
+.card.list .row,
+.card.list .spend-row,
+.standing-head,
+.overview .row,
+.overview-label,
+.overview-note {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Overlapping faces are ringed in the colour behind them, so the overlap reads
+ * as a cut-out: the page, or the box of the Archived fold. */
+details.howto .avatars .avatar,
+details.howto .avatars .more {
+  border-color: var(--surface);
+}
+
+/* A group on Home is a row too: name, faces and where you stand. */
+.trip-card {
+  padding: 16px 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+.section > .trip-card-wrap:first-of-type .trip-card {
+  border-top: 1px solid var(--line);
+}
+.trip-card-wrap + .trip-card-wrap {
+  margin-top: 0;
+}
+/* Inside the Archived fold the box is the edge: no second line under the last row. */
+details.howto .trip-card-wrap:last-child .trip-card {
+  border-bottom: 0;
+}
+.trip-card:active {
+  transform: none;
+  background: var(--surface-2);
+}
+.trip-more {
+  right: -8px;
 }
 .hero {
   background: linear-gradient(160deg, rgba(30, 48, 84, 0.72) 0%, rgba(13, 21, 38, 0.66) 60%, rgba(10, 17, 32, 0.66) 100%);
@@ -2527,8 +2550,6 @@ details.howto {
 /* No blur available, or the phone asks for less transparency: solid surfaces. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root {
-    --glass: var(--surface-2);
-    --glass-strong: var(--surface-3);
     --glass-bar: rgba(0, 0, 0, 0.94);
   }
   .topbar.home {
@@ -2537,14 +2558,9 @@ details.howto {
 }
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --glass: var(--surface-2);
-    --glass-strong: var(--surface-3);
     --glass-bar: #000;
     --glass-blur: none;
     --pane: var(--surface);
-  }
-  body::before {
-    display: none;
   }
   .hero {
     background: linear-gradient(160deg, #132038 0%, #0d1526 60%, #0a1120 100%);

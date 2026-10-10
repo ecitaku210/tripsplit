@@ -56,7 +56,7 @@ export function PeopleScreen({ tripId }: { tripId: Id }) {
       />
       <div className="content no-fab">
         <div className="section">
-          <div className="card">
+          <div className="card list">
             {members.map((m) => {
               const net = netOf(m.id)
               const isEditing = editing === m.id

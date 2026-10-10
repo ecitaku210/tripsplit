@@ -114,7 +114,7 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
 
         <div className="section">
           <h2>Who owes what for this</h2>
-          <div className="card">
+          <div className="card list">
             {rows.map(({ p, member, share, weight }) => (
               <div key={p.memberId} className="row static">
                 {member ? <Avatar member={member} group={trip.members} /> : <UnknownAvatar />}

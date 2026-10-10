@@ -113,7 +113,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
             )}
             <div className="section">
               <h2>Who pays whom</h2>
-              <div className="card">
+              <div className="card list">
                 {plan.map((t) => {
                   const party = isParty(me, t)
                   const key = `${t.fromMember}>${t.toMember}`

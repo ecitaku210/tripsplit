@@ -477,7 +477,7 @@ function ClosedPeriods({ trip }: { trip: Trip }) {
                   Reopen it and close again once everyone has settled.
                 </Alert>
               )}
-              <div className="card">
+              <div className="card list">
                 {p.expenses.map((e) => (
                   <button
                     key={e.id}
@@ -591,7 +591,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
                 <span className={day.date ? '' : 'bad'}>{dayLabel(day.date, today)}</span>
                 <span className="num">{formatMoney(day.totalMinor, trip.currency)}</span>
               </div>
-              <div className="card">
+              <div className="card list">
                 {day.expenses.map((e) => {
                   const payer = trip.members[e.paidBy]
                   const line = myLineOn(e, me, trip.currency)
@@ -630,7 +630,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
       {settlements.length > 0 && (
         <div className="section">
           <h2>Payments</h2>
-          <div className="card">
+          <div className="card list">
             {settlements.map((s) => (
               <div key={s.id} className="row static">
                 <AvatarPair group={trip.members} from={trip.members[s.fromMember]} to={trip.members[s.toMember]} />
@@ -719,7 +719,7 @@ function BalancesTab({ trip }: { trip: Trip }) {
 
   return (
     <div className="section">
-      <div className="card">
+      <div className="card list">
         {totals.balances.map((b) => {
           const member = trip.members[b.memberId]
           const label = counterpartyLabel(obligationsOf(plan, b.memberId), nameOf)
@@ -828,7 +828,7 @@ function SpendByCategory({ trip }: { trip: Trip }) {
             />
           ))}
         </div>
-        <div className="card">
+        <div className="card list">
           {rows.items.map(({ c, minor, pct }) => (
             <div key={c.id} className="spend-row">
               <span className="swatch" style={{ background: categoryColor(c) }}>
