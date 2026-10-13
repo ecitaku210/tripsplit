@@ -282,8 +282,8 @@ and needs a reCAPTCHA site key registered in the console.
 
 ## Running it locally
 
-Needs **Node 22.12 or newer** (Vitest 5 sets that floor; it is enforced by
-`engines` in `package.json`). The emulator tests also need **Java 11+**.
+Needs **Node 24.12 or newer** (Firebase 13 sets that floor for every
+`@firebase` package; it is enforced by `engines` in `package.json`). The emulator tests also need **Java 11+**.
 
 ```bash
 npm install
