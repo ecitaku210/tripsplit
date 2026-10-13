@@ -1776,6 +1776,40 @@ details.howto .body strong {
   color: var(--accent);
 }
 
+/*
+ * The quick description chips draw a smaller pill (34px, 12px text) than
+ * the button they sit in: the button stays 40px tall so a thumb still lands
+ * on it, and only the visible shape shrinks so the row reads as a hint, not
+ * a second set of fields. "Same as last time" is not in .chips and keeps
+ * its full size.
+ */
+.chips .chip.pick {
+  position: relative;
+  z-index: 0;
+  gap: 4px;
+  padding: 0 11px;
+  border-color: transparent;
+  background: none;
+  font-size: 0.75rem;
+  outline-offset: -1px;
+}
+
+.chips .chip.pick::before {
+  content: '';
+  position: absolute;
+  inset: 3px 0;
+  z-index: -1;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.chips .chip.pick.on::before {
+  border-color: transparent;
+  background: var(--accent-soft);
+}
+
 .people-pick {
   display: flex;
   gap: 6px;
