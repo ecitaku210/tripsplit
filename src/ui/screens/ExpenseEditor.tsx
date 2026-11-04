@@ -483,26 +483,33 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
               const on = included.has(m.id)
               return (
                 <div key={m.id} className="split-row">
-                  <input
-                    className="check"
-                    type="checkbox"
-                    checked={on}
-                    aria-label={`Include ${m.name}`}
-                    onChange={() => {
-                      setTouched(true)
-                      setIncluded((prev) => {
-                        const next = new Set(prev)
-                        if (next.has(m.id)) next.delete(m.id)
-                        else next.add(m.id)
-                        return next
-                      })
-                    }}
-                  />
-                  <Avatar member={m} group={trip.members} small />
-                  <span className="name">
-                    {m.name}
-                    {m.deletedAt !== null && <> <span className="chip tiny">removed</span></>}
-                  </span>
+                  {/*
+                    The label makes the whole name a tap target for the 24px
+                    checkbox. The amount input stays outside it, so tapping
+                    the number edits the number instead of toggling the person.
+                  */}
+                  <label className="split-pick">
+                    <input
+                      className="check"
+                      type="checkbox"
+                      checked={on}
+                      aria-label={`Include ${m.name}`}
+                      onChange={() => {
+                        setTouched(true)
+                        setIncluded((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(m.id)) next.delete(m.id)
+                          else next.add(m.id)
+                          return next
+                        })
+                      }}
+                    />
+                    <Avatar member={m} group={trip.members} small />
+                    <span className="name">
+                      {m.name}
+                      {m.deletedAt !== null && <> <span className="chip tiny">removed</span></>}
+                    </span>
+                  </label>
                   {on && mode !== 'equal' && (
                     <input
                       inputMode="decimal"
