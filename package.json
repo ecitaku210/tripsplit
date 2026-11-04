@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc -b",
     "icons": "node scripts/make-icons.mjs",
+    "check:phone": "node scripts/phone-check.mjs",
     "test:emulator": "firebase emulators:exec --only firestore,auth --project demo-tripsplit 'vitest run -c vitest.emulator.config.ts'"
   },
   "dependencies": {
