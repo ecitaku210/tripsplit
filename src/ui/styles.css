@@ -1642,12 +1642,16 @@ details.howto .body strong {
   overflow: hidden;
 }
 
+/* The fill is always full width and slides in from the left, clipped by the
+   track, so a balance that changes while the row is open animates on the
+   compositor instead of re-running layout every frame. Sliding, unlike
+   scaling, keeps the rounded right end. */
 .balance-row .bar > span {
   display: block;
   height: 100%;
   border-radius: 2px;
   background: var(--text-faint);
-  transition: width 0.4s var(--ease);
+  transition: transform 0.4s var(--ease);
 }
 
 .balance-row .bar.pos > span {
@@ -1926,12 +1930,10 @@ details.howto .body strong {
   color: var(--text-dim);
 }
 
+/* Same 12px text as every chip: smaller fails the 12px floor on a phone. */
 .chip.tiny {
   margin-left: 6px;
   padding: 1px 7px;
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .chip.accent {

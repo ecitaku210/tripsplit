@@ -14,7 +14,7 @@
     "test": "vitest run",
     "lint": "oxlint -c .oxlintrc.json --deny-warnings src",
     "test:watch": "vitest",
-    "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false",
+    "typecheck": "tsc -b",
     "icons": "node scripts/make-icons.mjs",
     "test:emulator": "firebase emulators:exec --only firestore,auth --project demo-tripsplit 'vitest run -c vitest.emulator.config.ts'"
   },
