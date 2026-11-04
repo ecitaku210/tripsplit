@@ -752,7 +752,7 @@ function BalancesTab({ trip }: { trip: Trip }) {
                   paid <Money amount={b.paidMinor} currency={trip.currency} /> · used{' '}
                   <Money amount={b.owedMinor} currency={trip.currency} />
                   <div className={`bar ${tone}`} aria-hidden="true">
-                    <span style={{ width: `${Math.max(width, b.netMinor === 0 ? 0 : 3)}%` }} />
+                    <span style={{ transform: `translateX(${Math.max(width, b.netMinor === 0 ? 0 : 3) - 100}%)` }} />
                   </div>
                 </div>
               </div>
