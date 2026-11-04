@@ -753,7 +753,7 @@ button.link {
 .avatar.sm {
   width: 28px;
   height: 28px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .avatar.unknown {
@@ -1951,6 +1951,21 @@ details.howto .body strong {
 
 .split-row:last-child {
   border-bottom: 0;
+}
+
+/* The checkbox, avatar and name are one label. It reaches into the row's
+   vertical padding, so the whole row height toggles the person. */
+.split-pick {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 40px;
+  margin: -10px 0;
+  padding: 10px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .split-row .name {
