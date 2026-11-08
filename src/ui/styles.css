@@ -109,6 +109,21 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Running text should not end on one word stranded on its own line, and a
+   heading that wraps should wrap into lines of similar length. Browsers that
+   do not know text-wrap ignore it and wrap as before. */
+p,
+li,
+.hint {
+  text-wrap: pretty;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
 /* Tabular figures keep columns of money vertically aligned. */
 .num {
   font-variant-numeric: tabular-nums;
@@ -1020,6 +1035,9 @@ textarea {
 textarea {
   min-height: 84px;
   resize: vertical;
+  /* Form controls do not inherit body's line-height; the browser's default
+     (about 1.2) cramps a note that runs to several lines. */
+  line-height: 1.45;
 }
 
 input:focus,
