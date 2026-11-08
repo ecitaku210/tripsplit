@@ -298,8 +298,10 @@ npm run check:phone    # after a build: every screen on a phone viewport
 
 `check:phone` serves `dist/` and opens every screen at 390px, at 320px and with
 text at 125%. It reports sideways scrolling, controls under 40px
-(`-- --targets 48` measures against Android's 48dp), text under 12px, controls
-with no accessible name, and page errors. Screenshots go to `dist-e2e/phone/`. It
+(`-- --targets 48` measures against Android's 48dp), text under 12px, text under
+WCAG AA contrast, cramped line spacing, skipped heading levels, controls with no
+accessible name, and page errors. Lines that end on one stranded word are
+printed as advisory notes and don't fail the check. Screenshots go to `dist-e2e/phone/`. It
 needs Playwright with Chromium, which is not an app dependency: install it with
 `npm i -D playwright && npx playwright install chromium`, or run it where a
 global copy exists.

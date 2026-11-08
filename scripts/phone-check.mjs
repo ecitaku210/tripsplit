@@ -14,8 +14,13 @@
  *   overflow   the page scrolls sideways
  *   targets    a visible control smaller than --targets px (default 40)
  *   tiny       visible text under 12px
+ *   contrast   text under WCAG AA contrast (4.5:1; 3:1 for large text)
+ *   leading    text over two or more lines with line spacing under 1.3x
+ *   headings   a heading level skipped (h1 then h3)
  *   unnamed    a control with no accessible name
  *   errors     an uncaught exception in the page
+ * Advisory notes, printed but never failing: a paragraph ending on one word,
+ * an unbalanced heading, text over an image where contrast cannot be measured.
  * Screenshots go to dist-e2e/phone/ (git-ignored). Exit 1 when anything is found.
  *
  * Needs Playwright with Chromium. It is not a dependency of the app: the check
@@ -178,17 +183,129 @@ function audit({ targetPx, tinyPx }) {
     if (!nameOf(el)) unnamed.push(describe(el))
   }
 
+  // Colours, for contrast. Every background a text can sit on: translucent layers are stacked down
+  // to the first opaque one, and each gradient is a layer of its own (the first listed paints on
+  // top), so every combination of one stop per gradient is tried and the worst ratio counts.
+  const parse = (c) => {
+    const m = /rgba?\(([^)]+)\)/.exec(c)
+    if (!m) return null
+    const [r, g, b, a = 1] = m[1].split(/[\s,/]+/).filter(Boolean).map(Number)
+    return { r, g, b, a }
+  }
+  const over = (top, under) => ({
+    r: top.r * top.a + under.r * (1 - top.a),
+    g: top.g * top.a + under.g * (1 - top.a),
+    b: top.b * top.a + under.b * (1 - top.a),
+    a: 1,
+  })
+  const luminance = ({ r, g, b }) => {
+    const f = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+  }
+  const backgroundsOf = (el) => {
+    let stacks = [[]]
+    for (let n = el; n; n = n.parentElement) {
+      const s = getComputedStyle(n)
+      if (/url\(/.test(s.backgroundImage)) return null
+      const gradients = (s.backgroundImage.match(/(?:linear|radial|conic)-gradient\((?:[^()]|\([^()]*\))*\)/g) ?? [])
+        .map((g) => (g.match(/rgba?\([^)]+\)/g) ?? []).map(parse))
+        .filter((stops) => stops.length)
+      let combos = [[]]
+      for (const stops of gradients) combos = combos.flatMap((combo) => stops.map((stop) => [...combo, stop]))
+      const colour = parse(s.backgroundColor)
+      const below = colour && colour.a > 0 ? [colour] : []
+      stacks = stacks.flatMap((stack) => combos.map((combo) => [...stack, ...combo, ...below]))
+      if (colour && colour.a >= 1) break
+    }
+    const page = parse(getComputedStyle(document.body).backgroundColor) ?? { r: 0, g: 0, b: 0, a: 1 }
+    return stacks.map((stack) => stack.reduceRight((under, layer) => over(layer, under), page))
+  }
+
   const tiny = new Set()
+  const contrast = []
+  const leading = []
+  let unmeasured = 0
+  const seen = new Set()
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const el = node.parentElement
     if (!el || !node.textContent.trim() || !visible(el)) continue
-    const px = parseFloat(getComputedStyle(el).fontSize)
+    const s = getComputedStyle(el)
+    const px = parseFloat(s.fontSize)
     if (px < tinyPx - 0.01) tiny.add(`${describe(el)} ${px}px`)
+    if (seen.has(el)) continue
+    seen.add(el)
+
+    // WCAG AA: 4.5:1, or 3:1 for large text (24px, or 18.66px bold). Decorative (aria-hidden) and
+    // disabled text are exempt, as WCAG allows.
+    if (!el.closest('[aria-hidden="true"], [disabled], [aria-disabled="true"]')) {
+      const backgrounds = backgroundsOf(el)
+      if (!backgrounds) unmeasured++
+      else {
+        const fg = parse(s.color)
+        const ratio = Math.min(...backgrounds.map((bg) => {
+          const [hi, lo] = [luminance(fg.a < 1 ? over(fg, bg) : fg), luminance(bg)].sort((a, b) => b - a)
+          return (hi + 0.05) / (lo + 0.05)
+        }))
+        const need = px >= 24 || (Number(s.fontWeight) >= 700 && px >= 18.66) ? 3 : 4.5
+        if (ratio < need) contrast.push(`${describe(el)} ${ratio.toFixed(2)}:1, needs ${need}:1`)
+      }
+    }
+
+    // Text that runs to two or more lines needs line spacing of at least 1.3x.
+    const lineHeight = s.lineHeight === 'normal' ? px * 1.2 : parseFloat(s.lineHeight)
+    const lines = Math.round(el.getBoundingClientRect().height / lineHeight)
+    if (lines >= 2 && el.children.length === 0 && lineHeight / px < 1.3) {
+      leading.push(`${describe(el)} line-height ${(lineHeight / px).toFixed(2)}x over ${lines} lines`)
+    }
   }
 
+  // Heading levels must not skip (h1 then h3), or screen-reader navigation breaks.
+  const headings = []
+  let previous = 0
+  for (const h of document.querySelectorAll('h1, h2, h3, h4, h5, h6')) {
+    if (!visible(h)) continue
+    const level = Number(h.tagName[1])
+    if (previous && level > previous + 1) headings.push(`h${previous} then h${level}: ${describe(h)}`)
+    previous = level
+  }
+
+  // Advisory only: a last line holding one short word, or a heading whose last line is far shorter
+  // than the one above. text-wrap fixes most; what is left depends on the exact width.
+  const rows = (el) => {
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    const widths = new Map()
+    for (const r of range.getClientRects()) widths.set(Math.round(r.top), (widths.get(Math.round(r.top)) ?? 0) + r.width)
+    return [...widths.values()]
+  }
+  const notes = []
+  for (const el of document.querySelectorAll('p, li, .hint')) {
+    if (!visible(el)) continue
+    const w = rows(el)
+    if (w.length >= 2 && w.at(-1) < 60 && w.at(-1) < w.at(-2) * 0.2) {
+      notes.push(`straggler: ${describe(el)} ends on "${el.textContent.trim().split(/\s+/).at(-1)}" alone`)
+    }
+  }
+  // A heading built from separate blocks (a wordmark over a subtitle) is laid out on purpose.
+  for (const el of document.querySelectorAll('h1, h2, h3')) {
+    if (!visible(el) || [...el.children].some((c) => getComputedStyle(c).display !== 'inline')) continue
+    const w = rows(el)
+    if (w.length >= 2 && w.at(-1) < w.at(-2) * 0.4) notes.push(`unbalanced heading: ${describe(el)}`)
+  }
+  if (unmeasured) notes.push(`contrast not measured on ${unmeasured} text element(s) over an image`)
+
   const overflowPx = document.documentElement.scrollWidth - document.documentElement.clientWidth
-  return { targets, unnamed, tiny: [...tiny], overflow: overflowPx > 0 ? [`page is ${overflowPx}px wider than the screen`] : [] }
+  return {
+    targets,
+    unnamed,
+    tiny: [...tiny],
+    contrast,
+    leading,
+    headings,
+    overflow: overflowPx > 0 ? [`page is ${overflowPx}px wider than the screen`] : [],
+    notes,
+  }
 }
 
 /* ---------- server ---------- */
@@ -236,6 +353,7 @@ mkdirSync(SHOTS, { recursive: true })
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
 let total = 0
+let totalNotes = 0
 try {
   for (const view of VIEWS) {
     const ctx = await browser.newContext({
@@ -264,13 +382,17 @@ try {
       const rootPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
       if (view.remScale && Math.abs(rootPx - 16 * view.remScale) > 0.5) errors.push(`large text not applied: root font is ${rootPx}px`)
       const shown = await page.evaluate(() => document.body.innerText.trim().length)
-      const found = shown ? await page.evaluate(audit, { targetPx: TARGET_PX, tinyPx: TINY_PX }) : { targets: [], unnamed: [], tiny: [], overflow: [] }
+      const found = shown ? await page.evaluate(audit, { targetPx: TARGET_PX, tinyPx: TINY_PX }) : { notes: [] }
       found.errors = shown ? errors : [...errors, 'the screen rendered no text']
+      const notes = found.notes
+      delete found.notes
       await page.screenshot({ path: join(SHOTS, `${screen.name}-${view.name}.png`), fullPage: true })
       const lines = Object.entries(found).flatMap(([kind, list]) => list.map((item) => `    ${kind.padEnd(8)} ${item}`))
       total += lines.length
       console.log(`${lines.length ? '✗' : '✓'} ${screen.name} @ ${view.name}${lines.length ? `: ${lines.length}` : ''}`)
       for (const line of lines) console.log(line)
+      for (const note of notes) console.log(`    note     ${note}`)
+      totalNotes += notes.length
       await page.close()
     }
     await ctx.close()
@@ -279,5 +401,5 @@ try {
   await browser.close()
   server.stop()
 }
-console.log(`\n${total === 0 ? 'No findings' : `${total} finding(s)`} across ${SCREENS.length} screens x ${VIEWS.length} views (targets < ${TARGET_PX}px, text < ${TINY_PX}px). Screenshots: ${SHOTS}`)
+console.log(`\n${total === 0 ? 'No findings' : `${total} finding(s)`}${totalNotes ? ` and ${totalNotes} advisory note(s)` : ''} across ${SCREENS.length} screens x ${VIEWS.length} views (targets < ${TARGET_PX}px, text < ${TINY_PX}px). Screenshots: ${SHOTS}`)
 process.exit(total === 0 ? 0 : 1)

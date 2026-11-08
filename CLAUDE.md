@@ -57,7 +57,7 @@ The Humanizer skill (`.claude/skills/humanizer/`) strips bold and headings. Use 
 | `npm test` | vitest, about 311 tests |
 | `npm run build` | `tsc -b`, then `vite build`, then `scripts/check-built-css.mjs` |
 | `npm run test:emulator` | Firestore rules and two-phone sync, about 30 tests |
-| `npm run check:phone` | after a build: all 12 screens at 390px, 320px and 125% text; flags sideways scrolling, controls under 40px, text under 12px, unnamed controls and page errors |
+| `npm run check:phone` | after a build: all 12 screens at 390px, 320px and 125% text; flags sideways scrolling, controls under 40px, text under 12px, WCAG AA contrast, line spacing under 1.3x, skipped headings, unnamed controls and page errors; lone last words are advisory notes |
 
 `check:phone` needs Playwright, which cloud containers have globally. Never run `playwright install` there.
 
