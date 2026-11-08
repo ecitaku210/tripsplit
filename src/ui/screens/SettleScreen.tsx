@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { todayISO, useStore, useTrip } from '../../storage/store'
 import { computeTotals, liveMembers } from '../../domain/balance'
 import { isParty, settlementPlan } from '../../domain/settle'
-import { Alert, AvatarPair, Empty, Money, NotFound, TopBar, firstName } from '../components'
+import { Alert, AvatarPair, Empty, Money, NotFound, TopBar } from '../components'
+import { shortName as memberName } from '../names'
 import { Icon } from '../icons'
 import { tap } from '../haptics'
 import { back, navigate } from '../router'
@@ -38,7 +39,7 @@ export function SettleScreen({ tripId }: { tripId: Id }) {
   if (!trip) return <NotFound what="trip" />
 
   const nameOf = (id: Id) => trip.members[id]?.name ?? 'Someone (removed)'
-  const shortName = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'Someone')
+  const shortName = (id: Id) => (trip.members[id] ? memberName(trip.members, id) : 'Someone')
 
   return (
     <>

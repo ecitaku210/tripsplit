@@ -17,10 +17,10 @@ import {
   Segmented,
   TopBar,
   UnknownAvatar,
-  firstName,
   shortDate,
   verdict,
 } from '../components'
+import { shortName as memberName } from '../names'
 import { Icon } from '../icons'
 import { navigate } from '../router'
 import { useToast } from '../toast'
@@ -180,7 +180,7 @@ function BalanceHero({
   const mine = me ? totals.balances.find((b) => b.memberId === me) : undefined
   // The same plan Settle up shows, so the names here and there always agree.
   const plan = useMemo(() => settlementPlan(totals.balances), [totals])
-  const nameOf = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'someone')
+  const nameOf = (id: Id) => (trip.members[id] ? memberName(trip.members, id) : 'someone')
   // When the phone is cut off, the card above says it in full; no echo here.
   const note = sync && !isCutOff(sync) ? SYNC[sync].note : undefined
 
@@ -449,7 +449,7 @@ function ClosedPeriods({ trip }: { trip: Trip }) {
   const { show: toast } = useToast()
   const periods = useMemo(() => closedPeriods(trip), [trip])
   if (periods.length === 0) return null
-  const shortName = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'Someone')
+  const shortName = (id: Id) => (trip.members[id] ? memberName(trip.members, id) : 'Someone')
   return (
     <div className="section">
       <div className="section-head">
@@ -556,7 +556,7 @@ function ExpensesTab({ trip, me }: { trip: Trip; me: Id | undefined }) {
   const today = todayISO()
   const settlements = useMemo(() => liveSettlements(trip), [trip])
   const nameOf = (id: Id) => trip.members[id]?.name ?? 'Someone (removed)'
-  const shortName = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'Someone')
+  const shortName = (id: Id) => (trip.members[id] ? memberName(trip.members, id) : 'Someone')
 
   const periods = useMemo(() => closedPeriods(trip), [trip])
 
@@ -688,7 +688,7 @@ function BalancesTab({ trip }: { trip: Trip }) {
   const { db } = useStore()
   const totals = useMemo(() => computeTotals(trip), [trip])
   const plan = useMemo(() => settlementPlan(totals.balances), [totals])
-  const nameOf = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'someone')
+  const nameOf = (id: Id) => (trip.members[id] ? memberName(trip.members, id) : 'someone')
   const me = db.identities[trip.id]
   const settled = totals.balances.every((b) => b.netMinor === 0)
   // The balance card already links to Settle up when the reader owes or is

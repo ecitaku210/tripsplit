@@ -4,7 +4,8 @@ import { liveMembers } from '../../domain/balance'
 import { isParty } from '../../domain/settle'
 import { formatMinor, formatMoney, parseAmount } from '../../domain/money'
 import { amountInWords } from '../../domain/words'
-import { Alert, NotFound, TopBar, firstName } from '../components'
+import { Alert, NotFound, TopBar } from '../components'
+import { shortName as memberName } from '../names'
 import { Icon } from '../icons'
 import { tap } from '../haptics'
 import { back } from '../router'
@@ -43,7 +44,7 @@ export function RepayScreen({ tripId }: { tripId: Id }) {
   const toId = to || members.find((m) => m.id !== fromId)?.id || ''
   const party = isParty(me, { fromMember: fromId, toMember: toId })
   const valid = fromId !== '' && toId !== '' && fromId !== toId && minor !== null && minor > 0 && party
-  const shortName = (id: Id) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'Someone')
+  const shortName = (id: Id) => (trip.members[id] ? memberName(trip.members, id) : 'Someone')
 
   return (
     <>

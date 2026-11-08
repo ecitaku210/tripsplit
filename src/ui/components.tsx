@@ -77,9 +77,7 @@ export function TopBar({
 }
 
 /** "Chirag Tandon" -> "Chirag". Dense rows have no room for surnames. */
-export function firstName(name: string): string {
-  return name.trim().split(/\s+/)[0] || name
-}
+export { firstName } from './names'
 
 export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean)

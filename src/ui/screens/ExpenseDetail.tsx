@@ -4,7 +4,8 @@ import { periodOf } from '../../domain/balance'
 import { localIso } from './CloseBooks'
 import { computeSplit } from '../../domain/split'
 import { formatMoney } from '../../domain/money'
-import { Alert, Avatar, Money, NotFound, TopBar, UnknownAvatar, firstName, shortDate } from '../components'
+import { Alert, Avatar, Money, NotFound, TopBar, UnknownAvatar, shortDate } from '../components'
+import { shortName as memberName } from '../names'
 import { Icon } from '../icons'
 import { navigate } from '../router'
 import { myLineOn, splitModeLabel } from '../expenseLines'
@@ -86,7 +87,7 @@ export function ExpenseDetail({ tripId, expenseId }: { tripId: Id; expenseId: Id
             <div className="paid-by">
               {payer ? <Avatar member={payer} group={trip.members} small /> : <UnknownAvatar small />}
               <span>
-                <strong>{payer ? firstName(payer.name) : 'Someone (removed)'}</strong> paid
+                <strong>{payer ? memberName(trip.members, expense.paidBy) : 'Someone (removed)'}</strong> paid
                 {expense.paidBy === me ? ' (you)' : ''}
               </span>
             </div>
