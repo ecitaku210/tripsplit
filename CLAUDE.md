@@ -42,6 +42,8 @@ The deploy is `.github/workflows/deploy.yml`:
 
 The Humanizer skill (`.claude/skills/humanizer/`) strips bold and headings. Use it only on prose the owner asks to rewrite, not on answers to them.
 
+The Impeccable skill (`.claude/skills/impeccable/`) is vendored as instructions only: no engine binary, no hooks, no telemetry (see its `VENDORED.md`). It runs only when invoked as `/impeccable <command>`. Its steps that call `scripts/impeccable` fail by design, and the skill falls back to reading files directly. Don't use `live`, `generate`, `hooks` or `doctor`.
+
 ## Stack and commands
 
 - **Main libraries:** React 18.3 (deliberately not 19: +22 kB gzipped for nothing, as `.github/dependabot.yml` explains), TypeScript 7, Vite 8, vite-plugin-pwa 2, vitest 5, oxlint, firebase 13, and `@firebase/rules-unit-testing` 6.
