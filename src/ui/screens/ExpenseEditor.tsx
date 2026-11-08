@@ -68,6 +68,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
     return mine ? [mine, ...members.filter((m) => m.id !== me)] : members
   }, [members, db.identities, tripId])
   const payerRow = useRef<HTMLDivElement>(null)
+  /** Set by the first save, so a second tap before the screen closes does nothing. */
+  const saved = useRef(false)
   const uid = useId()
   /**
    * The note fold starts open only when there is a note to see. Read once:
@@ -242,6 +244,11 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
       jumpToProblem()
       return
     }
+    // A new expense gets a new id on every save, and leaving the screen is
+    // asynchronous, so a second tap before it closes would add a copy. On a
+    // slow phone that gap is long enough for a double tap.
+    if (saved.current) return
+    saved.current = true
     saveExpense(tripId, {
       ...(expenseId ? { id: expenseId } : {}),
       description: description.trim(),

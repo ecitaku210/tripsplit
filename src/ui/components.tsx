@@ -217,7 +217,8 @@ export function Empty({
           <Icon name={icon} size={26} />
         </div>
       )}
-      <h3>{title}</h3>
+      {/* h2: it often follows the page's h1 directly, and h3 would skip a level. */}
+      <h2>{title}</h2>
       <p>{children}</p>
     </div>
   )

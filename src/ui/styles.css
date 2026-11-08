@@ -800,7 +800,7 @@ button.link {
   border-radius: 50%;
   border: 2px solid var(--bg);
   background: var(--surface-3);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
   color: var(--text-dim);
 }
@@ -1923,7 +1923,7 @@ details.howto .body strong {
   color: var(--accent);
 }
 
-.empty h3 {
+.empty h2 {
   margin: 0 0 6px;
   color: var(--text);
   font-size: 1.0625rem;

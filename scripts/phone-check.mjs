@@ -255,7 +255,8 @@ function audit({ targetPx, tinyPx }) {
     // Text that runs to two or more lines needs line spacing of at least 1.3x.
     const lineHeight = s.lineHeight === 'normal' ? px * 1.2 : parseFloat(s.lineHeight)
     const lines = Math.round(el.getBoundingClientRect().height / lineHeight)
-    if (lines >= 2 && el.children.length === 0 && lineHeight / px < 1.3) {
+    // Body text only: headings are set tighter on purpose.
+    if (lines >= 2 && el.children.length === 0 && !/^H[1-6]$/.test(el.tagName) && lineHeight / px < 1.3) {
       leading.push(`${describe(el)} line-height ${(lineHeight / px).toFixed(2)}x over ${lines} lines`)
     }
   }
