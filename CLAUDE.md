@@ -42,6 +42,8 @@ The deploy is `.github/workflows/deploy.yml`:
 
 The Humanizer skill (`.claude/skills/humanizer/`) strips bold and headings. Use it only on prose the owner asks to rewrite, not on answers to them.
 
+The Impeccable skill (`.claude/skills/impeccable/`) is vendored as instructions only: no engine binary, no hooks, no telemetry (see its `VENDORED.md`). It runs only when invoked as `/impeccable <command>`. Its steps that call `scripts/impeccable` fail by design, and the skill falls back to reading files directly. Don't use `live`, `generate`, `hooks` or `doctor`.
+
 ## Stack and commands
 
 - **Main libraries:** React 18.3 (deliberately not 19: +22 kB gzipped for nothing, as `.github/dependabot.yml` explains), TypeScript 7, Vite 8, vite-plugin-pwa 2, vitest 5, oxlint, firebase 13, and `@firebase/rules-unit-testing` 6.
@@ -57,7 +59,7 @@ The Humanizer skill (`.claude/skills/humanizer/`) strips bold and headings. Use 
 | `npm test` | vitest, about 311 tests |
 | `npm run build` | `tsc -b`, then `vite build`, then `scripts/check-built-css.mjs` |
 | `npm run test:emulator` | Firestore rules and two-phone sync, about 30 tests |
-| `npm run check:phone` | after a build: all 12 screens at 390px, 320px and 125% text; flags sideways scrolling, controls under 40px, text under 12px, unnamed controls and page errors |
+| `npm run check:phone` | after a build: all 12 screens at 390px, 320px and 125% text; flags sideways scrolling, controls under 40px, text under 12px, WCAG AA contrast, line spacing under 1.3x, skipped headings, unnamed controls and page errors; lone last words are advisory notes |
 
 `check:phone` needs Playwright, which cloud containers have globally. Never run `playwright install` there.
 

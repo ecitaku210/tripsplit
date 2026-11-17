@@ -12,10 +12,10 @@ import {
   Money,
   TopBar,
   UnknownAvatar,
-  firstName,
   verdict,
   type SheetAction,
 } from '../components'
+import { shortName as memberName } from '../names'
 import { settlementPlan } from '../../domain/settle'
 import { cardVerdict, listNames, obligationsOf } from '../../domain/standing'
 import { overview, type OverviewLine } from '../../domain/overview'
@@ -164,7 +164,7 @@ function TripCard({ trip, me }: { trip: Trip; me: string | undefined }) {
   } else {
     // "You owe Bhavya ₹11.50", not "You owe ₹11.50": the name is the
     // action. Read from the same plan Settle up shows.
-    const nameOf = (id: string) => (trip.members[id] ? firstName(trip.members[id]!.name) : 'someone')
+    const nameOf = (id: string) => (trip.members[id] ? memberName(trip.members, id) : 'someone')
     const v = cardVerdict(obligationsOf(settlementPlan(totals.balances), me!), mine.netMinor, nameOf)
     verdictNode = (
       <span className={`verdict ${v.tone}`}>
@@ -311,7 +311,7 @@ function Standing({ trips, identities }: { trips: Trip[]; identities: Record<str
       >
         {member ? <Avatar member={member} group={trip.members} small /> : <UnknownAvatar small />}
         <div className="grow">
-          <div className="title one-line">{member ? firstName(member.name) : 'Someone (removed)'}</div>
+          <div className="title one-line">{member ? memberName(trip.members, l.memberId) : 'Someone (removed)'}</div>
           <div className="meta">{l.tripName}</div>
         </div>
         <div className="amount">

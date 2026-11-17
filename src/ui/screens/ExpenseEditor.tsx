@@ -4,7 +4,8 @@ import { computeSplit, PERCENT_TOTAL } from '../../domain/split'
 import { evaluateAmount, formatMinor, formatMoney, parseAmount } from '../../domain/money'
 import { amountInWords } from '../../domain/words'
 import { isIsoDate } from '../../domain/ledger'
-import { Alert, Avatar, Field, Money, NotFound, Segmented, TopBar, firstName } from '../components'
+import { Alert, Avatar, Field, Money, NotFound, Segmented, TopBar } from '../components'
+import { shortName as memberName } from '../names'
 import { Icon } from '../icons'
 import { back, leave } from '../router'
 import { useToast } from '../toast'
@@ -67,6 +68,8 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
     return mine ? [mine, ...members.filter((m) => m.id !== me)] : members
   }, [members, db.identities, tripId])
   const payerRow = useRef<HTMLDivElement>(null)
+  /** Set by the first save, so a second tap before the screen closes does nothing. */
+  const saved = useRef(false)
   const uid = useId()
   /**
    * The note fold starts open only when there is a note to see. Read once:
@@ -78,7 +81,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
 
   /** The newest live expense on the trip, for "same as last time". */
   const last = useMemo(() => (trip ? liveExpenses(trip)[0] ?? null : null), [trip])
-  const lastPayerName = last && trip ? firstName(trip.members[last.paidBy]?.name ?? 'someone') : ''
+  const lastPayerName = last && trip ? (trip.members[last.paidBy] ? memberName(trip.members, last.paidBy) : 'someone') : ''
   const lastSplitLabel = last
     ? last.splitMode === 'equal'
       ? `split equally between ${last.parts.length}`
@@ -241,6 +244,11 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
       jumpToProblem()
       return
     }
+    // A new expense gets a new id on every save, and leaving the screen is
+    // asynchronous, so a second tap before it closes would add a copy. On a
+    // slow phone that gap is long enough for a double tap.
+    if (saved.current) return
+    saved.current = true
     saveExpense(tripId, {
       ...(expenseId ? { id: expenseId } : {}),
       description: description.trim(),
@@ -424,7 +432,7 @@ export function ExpenseEditor({ tripId, expenseId }: { tripId: Id; expenseId: Id
                   }}
                 >
                   <Avatar member={m} group={trip.members} />
-                  <span className="pname">{firstName(m.name)}</span>
+                  <span className="pname">{memberName(trip.members, m.id)}</span>
                   {m.id === db.identities[tripId] && <span className="chip tiny accent me">you</span>}
                 </button>
               )
